@@ -33,7 +33,7 @@ bool LoadSettings(bool reset)
   EEPROM.begin(4096);
   // Try and read from "EEPROM", if that fails use defaults
   byte *p = (byte *)&settings;
-  for (int i=0; i<sizeof(settings); i++) {
+  for (unsigned int i=0; i<sizeof(settings); i++) {
     byte b = EEPROM.read(i);
     *(p++) = b;
   }
@@ -82,7 +82,7 @@ void SaveSettings()
 {
   EEPROM.begin(4096);
   byte *p = (byte *)&settings;
-  for (int i=0; i<sizeof(settings); i++) EEPROM.write(i, *(p++));
+  for (unsigned int i=0; i<sizeof(settings); i++) EEPROM.write(i, *(p++));
   byte ck = CalcSettingsChecksum();
   EEPROM.write(sizeof(settings), ck);
   EEPROM.write(sizeof(settings)+1, ~ck);
@@ -95,7 +95,7 @@ static byte CalcSettingsChecksum()
 {
   byte *p = (byte*)&settings;
   byte c = 0xef;
-  for (int j=0; j<sizeof(settings); j++) c ^= *(p++);
+  for (unsigned int j=0; j<sizeof(settings); j++) c ^= *(p++);
   return c;
 }
 

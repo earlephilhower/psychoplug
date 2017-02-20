@@ -23,16 +23,13 @@
 
 #define PIN_LED (2)
 
-const byte ledSetup[20] = {0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1};  // Annoying, I need attention!
-const byte ledActive[20] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}; // It's all good
-
 void StartLED()
 {
   digitalWrite(PIN_LED, HIGH);
   pinMode(PIN_LED, OUTPUT);
 }
 
-const int ledBlinkValue[] = {
+static const uint32_t ledBlinkValue[] = {
   0x00000000, // LED_OFF
   0xffffffff, // LED_ON
   0xffff0000, // LED_CONNECTING (slow blink)

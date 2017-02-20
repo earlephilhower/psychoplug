@@ -19,24 +19,42 @@
 */
 
 #include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <MQTTClient.h>
+
 #include "psychoplug.h"
 #include "log.h"
 #include "mqtt.h"
 #include "settings.h"
+#include "relay.h"
 
 // MQTT interface
-WiFiClient wifiMQTT;
-WiFiClientSecure wifiMQTTSSL;
-MQTTClient mqttClient;
+static WiFiClient wifiMQTT;
+static WiFiClientSecure wifiMQTTSSL;
+static MQTTClient mqttClient;
 
 // Callback for the MQTT library
-// TODO FIXME - Add actual hooks to set/clear power state
 void messageReceived(String topic, String payload, char *bytes, unsigned int length)
 {
   char t[128], p[128];
+
+  (void)bytes;
+  (void)length;
+  
   topic.toCharArray(t, 128);
   payload.toCharArray(p, 128);
   LogPrintf("MQTT: '%s'='%s'\n", t, p); 
+
+  char topicStr[128];
+  snprintf(topicStr, 128, "%s/remotepower", settings.mqttTopic);
+  if (!strcmp(topicStr, t)) {
+    if (!strcmp("on", p) || !strcmp("ON", p) || !strcmp("1",p))
+      SetRelay(true);
+    else if (!strcmp("off", p) || !strcmp("OFF", p) || !strcmp("0",p))
+      SetRelay(false);
+    else if (!strcmp("toggle", p) || !strcmp("TOGGLE", p))
+      SetRelay(!GetRelay());
+  }
 }
 
 
@@ -46,7 +64,11 @@ void StartMQTT()
   if (settings.mqttEnable) {
     mqttClient.begin(settings.mqttHost, settings.mqttPort, settings.mqttSSL ? wifiMQTTSSL : wifiMQTT);
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
-    if (mqttClient.connected() ) mqttClient.subscribe(settings.mqttTopic);
+    if (mqttClient.connected() ) {
+      char topic[128];
+      snprintf(topic, 128, "%s/remotepower", settings.mqttTopic);
+      mqttClient.subscribe(topic);
+    }
   }
 }
 

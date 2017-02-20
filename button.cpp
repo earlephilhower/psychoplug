@@ -26,7 +26,7 @@
 
 static byte DebounceButton();
 
-const int PIN_BUTTON = 13;
+#define PIN_BUTTON (13)
 
 
 void StartButton()

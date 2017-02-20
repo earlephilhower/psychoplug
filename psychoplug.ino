@@ -198,14 +198,12 @@ void StartSTA()
   else WiFi.begin(settings.ssid);
 
   // Try for 15 seconds, then revert to config
-  for (byte i=1; i<15 && WiFi.status() != WL_CONNECTED; i++) {
-    // TODO - what about milis() overflow...
-    int timeout = millis() + 1000; // Wait 1 second just sleeping...
-    while (millis() < timeout) {
-      ManageLED(LED_CONNECTING);
-      delay(10);
-    }
+  int timeout=15000;
+  while (( timeout--) && (WiFi.status() != WL_CONNECTED) ) {
+    ManageLED(LED_CONNECTING);
+    delay(1);
   }
+  
   if (WiFi.status() != WL_CONNECTED) {
     StartSetupAP();
   } else {
@@ -300,9 +298,6 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
   int wlen = client->readBytesUntil('\r', reqBuff, sizeof(reqBuff)-1);
   reqBuff[wlen] = 0;
 
-  bool empty = true;
-  for (int i=0; i<sizeof(settings.uiSalt); i++) if (settings.uiSalt[i]) empty = false;
-
   int hlen = 0;
   authBuff[0] = 0; // Start w/o authorization hdr
   // Parse through all headers until \r\n\r\n
@@ -316,6 +311,9 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     }
   } while (hlen > 0);
 
+  // Check for no password...
+  bool empty = true;
+  for (unsigned int i=0; i<sizeof(settings.uiSalt); i++) if (settings.uiSalt[i]) empty = false;
   if (authReq && settings.uiUser[0] && !empty) {
     Base64Decode(authBuff+21);
     char *user = authBuff+21;
@@ -385,8 +383,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
 bool ParseParam(char **paramStr, char **name, char **value)
 {
   char *data = *paramStr;
-  bool done = false;
-
+ 
   if (*data==0) return false;
   
   char *namePtr = data;
@@ -498,7 +495,7 @@ void SendStatusHTML(WiFiClient *client)
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Current Time: %d:%02d:%02d %d/%d/%d<br>\n", hour(t), minute(t), second(t), month(t), day(t), year(t));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
-  WebPrintf(client, "Current: %dmA (%dW @ %dV)<nr>\n", lastCurrentMa, (lastCurrentMa * 120) / 1000, settings.voltage);
+  WebPrintf(client, "Current: %dmA (%dW @ %dV)<nr>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
 
   WebPrintf(client, "<table border=\"1px\">\n");
   WebPrintf(client, "<tr><th>#</th><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Time</th><th>Action</th><th>EDIT</th></tr>");
@@ -589,9 +586,6 @@ void setup()
 }
 
 
-//uint32_t rawPwr[4];
-
-
 // Scan an integer from a string, place it into dest, and then return # of bytes scanned
 int ParseInt(char *src, int *dest)
 {
@@ -657,7 +651,7 @@ void ParseSetupForm(char *params)
     ParamInt("mqttport", settings.mqttPort);
     int v;
     ParamInt("voltage", v);
-    if (v<80 | v>255) v=120;
+    if ((v<80) || (v>255)) v=120; // Sanity-check
     settings.voltage = v;
     ParamCheckbox("mqttssl", settings.mqttSSL);
     ParamText("mqtttopic", settings.mqttTopic);
@@ -685,11 +679,25 @@ void SendRebootHTML(WiFiClient *client)
   WebPrintf(client, "<h1>Setting Configuration</h1>");
   WebPrintf(client, "<br>\n");
   PrintSettings(client);
-  if (isSetup) WebPrintf(client, "<hr><h1><a href=\"index.html\">Click here to reconnect</a></h1>\n")
+  if (isSetup) WebPrintf(client, "<hr><h1><a href=\"index.html\">Click here to reconnect after 5 seconds.</a></h1>\n")
   else WebPrintf(client, "<br><h1>WIFIPlug will now reboot and connect to given network</h1>");
   WebPrintf(client, "</body>");
 }
 
+void SendResetHTML(WiFiClient *client)
+{
+  WebHeaders(client, NULL);
+  WebPrintf(client, "<html><head><title>Resetting WIFIPlug</title></head><body>\n");
+  WebPrintf(client, "<h1>Resetting the plug, please manually reconnect in 5 seconds.</h1>");
+  WebPrintf(client, "</body>");
+}
+
+
+void Reset()
+{
+  // Will hand if you just did serial upload.  Needs powercycle once after upload to function properly.
+  ESP.restart();
+}
 
 void loop()
 {
@@ -716,10 +724,15 @@ void loop()
         SendRebootHTML(&client);
         SaveSettings();
         isSetup = true;
+        delay(500);
         client.stop();
+        delay(500);
         webSetup.stop();
+        delay(500);
         WiFi.mode(WIFI_OFF);
-        StartSTA();
+        delay(500);
+        Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
+        //StartSTA();
       } else {
         WebError(&client, "404", NULL, "Not Found");
       }
@@ -745,7 +758,15 @@ void loop()
         SetRelay(false);
         SendSuccessHTML(&client);
       } else if (!strcmp(url, "hang.html")) {
-        while (1) ; // WDT will fire and we'll reboot
+        SendResetHTML(&client);
+        delay(500);
+        client.stop();
+        delay(500);
+        webIface.stop();
+        delay(500);
+        WiFi.mode(WIFI_OFF);
+        delay(500);
+        Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
       } else if (!strcmp("edit.html", url) && *params) {
         int id = -1;
         while (ParseParam(&params, &namePtr, &valPtr)) {
@@ -803,14 +824,15 @@ void loop()
         SendRebootHTML(&client);
         SaveSettings();
         client.stop();
-        StopNTP();
-        StopLog();
-        StopSchedule();
-        StopMQTT();
+        delay(500);
+        client.stop();
+        delay(500);
         webIface.stop();
+        delay(500);
         WiFi.mode(WIFI_OFF);
-
-        StartSTA();
+        delay(500);
+        Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
+        //StartSTA();
       } else {
         WebError(&client, "404", NULL, "Not Found");
       }

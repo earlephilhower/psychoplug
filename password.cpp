@@ -31,7 +31,7 @@ void HashPassword(const char *pass)
   memset(settings.uiSalt, 0, sizeof(settings.uiSalt)); // Clear salt to start
   memset(settings.uiPassEnc, 0, sizeof(settings.uiPassEnc)); // Clear salt to start
   if (pass[0]==0) return; // No password
-  for (int i=0; i<sizeof(settings.uiSalt); i++)
+  for (unsigned int i=0; i<sizeof(settings.uiSalt); i++)
     settings.uiSalt[i] = RANDOM_REG32 & 0xff;
 
   // Now catenate the hash and raw password to temp storage

@@ -25,6 +25,6 @@ void StartPowerMonitor();
 void ManagePowerMonitor();
 void StopPowerMonitor();
 
-extern int lastCurrentMa; // Last power reading
+int GetCurrentMA();
 
 #endif

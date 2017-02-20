@@ -21,16 +21,6 @@
 #ifndef _mqtt_h
 #define _mqtt_h
 
-#include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <MQTTClient.h>
-
-// MQTT interface
-//extern WiFiClient wifiMQTT;
-//extern WiFiClientSecure wifiMQTTSSL;
-//extern MQTTClient mqttClient;
-
-
 void StartMQTT();
 void ManageMQTT();
 void StopMQTT();
