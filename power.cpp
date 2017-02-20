@@ -49,7 +49,9 @@ void StartPowerMonitor()
 void ManagePowerMonitor()
 {
   static unsigned int lastReadMS = 0;
-  if (millis() > lastReadMS+10000) {
+  static int delta = millis() - lastReadMS;
+  if (delta > 0x7fffffff) delta = ~delta + 1; // Account for rollover where millis ~= 0 and lastread ~= MAXINT
+  if (delta > 10000) {
     lastReadMS = millis();
     ReadPowerMonitor();
     MQTTPublishInt("powerma", lastCurrentMa);
@@ -66,13 +68,13 @@ static void ReadPowerMonitor()
   char d[12];
   uint32_t rawPwr[3];
   byte count = 0;
-  unsigned int timeout = millis() + 1000;
-  Wire.requestFrom(0, 12); //16);
-  while (count < 12 && millis()<timeout) {
+  int timeout = 1000;
+  Wire.requestFrom(0, 12);
+  while (count < 12 && timeout--) {
     if (Wire.available()) d[count++] = Wire.read();
-    else yield();
+    else delay(1);
   }
-  if (millis() >= timeout) {
+  if (timeout <= 0 ) {
     rawPwr[0] = rawPwr[1] = rawPwr[2] = 0;
   } else {
     rawPwr[0] = ((uint32_t)d[0]<<24) | ((uint32_t)d[1]<<16) | ((uint32_t)d[2]<<8) | ((uint32_t)d[3]);

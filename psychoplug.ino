@@ -444,8 +444,6 @@ void SendSetupHTML(WiFiClient *client)
 
   WebPrintf(client, "<input type=\"submit\" value=\"Submit\">\n");
   WebPrintf(client, "</form></body></html>\n");
-
-  
 }
 
 

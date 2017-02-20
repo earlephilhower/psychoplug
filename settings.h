@@ -60,9 +60,7 @@ typedef struct {
   // Events to process
   Event event[MAXEVENTS];
 } Settings;
-
 extern Settings settings;
-
 
 bool LoadSettings(bool reset);
 void SaveSettings();

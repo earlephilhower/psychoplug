@@ -47,10 +47,10 @@ void StopNTP()
 
 /*-------- NTP code ----------*/
 /* Taken from the ESP8266 WebClient NTP sample */
-const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
-byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
+static const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
+static byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
 
-time_t GetNTPTime()
+static time_t GetNTPTime()
 {
   IPAddress ntpServerIP; // NTP server's ip address
 
@@ -58,8 +58,8 @@ time_t GetNTPTime()
   // get a random server from the pool
   WiFi.hostByName(settings.ntp, ntpServerIP);
   SendNTPPacket(ntpServerIP);
-  uint32_t beginWait = millis();
-  while (millis() - beginWait < 1500) {
+  int timeout = 1500; // Avoid issue of millis() rollover
+  while (timeout--) {
     int size = ntpUDP.parsePacket();
     if (size >= NTP_PACKET_SIZE) {
       ntpUDP.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
@@ -70,7 +70,8 @@ time_t GetNTPTime()
       secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
       secsSince1900 |= (unsigned long)packetBuffer[43];
       return secsSince1900 - 2208988800UL + settings.utc * SECS_PER_HOUR;
-    }
+    } else
+      delay(1);
   }
   return 0; // return 0 if unable to get the time
 }

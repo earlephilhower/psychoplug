@@ -34,7 +34,7 @@ static const uint32_t ledBlinkValue[] = {
   0xffffffff, // LED_ON
   0xffff0000, // LED_CONNECTING (slow blink)
   0xaaaaaaaa, // LED_AWAITSETUP (annoying flash)
-  0x00010001  // LED_CONNECTED  (occasional blip)
+  0x00000001  // LED_CONNECTED  (occasional blip)
 };
 
 void ManageLED(ledBlink type)
