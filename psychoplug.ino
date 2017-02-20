@@ -1,5 +1,5 @@
 /*
-  Psychoplug v0.2
+  Psychoplug
   ESP8266 based remote outlet with standalone timer and MQTT integration
   
   Copyright (C) 2017  Earle F. Philhower, III
@@ -23,138 +23,56 @@
 #include <WiFiUdp.h>
 #include <TimeLib.h>
 #include <Wire.h>
-#include <Hash.h>
 #include <MQTTClient.h>
 
-WiFiUDP ntpUDP;
+#include "psychoplug.h"
+#include "settings.h"
+#include "schedule.h"
+#include "mqtt.h"
+#include "ntp.h"
+#include "button.h"
+#include "log.h"
+#include "power.h"
+#include "password.h"
+#include "relay.h"
+#include "led.h"
+
+
+bool isSetup = false;
+Settings settings;
+
+
+
+
+
 
 // Global way of writing out dynamic HTML to socket
 // snprintf guarantees a null termination
-char webBuff[4096]; // Too large for stack, put it on the heap
-#define WebPrintf(c, fmt, ...) { snprintf(webBuff, sizeof(webBuff), fmt, ## __VA_ARGS__); (c)->print(webBuff); /*Serial.print(webBuff); Serial.flush();*/}
+#define WebPrintf(c, fmt, ...) { char webBuff[512]; snprintf(webBuff, sizeof(webBuff), fmt, ## __VA_ARGS__); (c)->print(webBuff); /*Serial.print(webBuff); Serial.flush();*/}
 
 // Web request line (URL, PARAMs parsed in-line)
-char reqBuff[256];
+char reqBuff[512];
 
 // HTTP interface
 WiFiServer webSetup(80);
 WiFiServer webIface(80);
 
-// MQTT interface
-WiFiClient wifiMQTT;
-WiFiClientSecure wifiMQTTSSL;
-MQTTClient mqttClient;
 
-
-const int PIN_RELAY = 15;
-const int PIN_LED = 2;
-const int PIN_BUTTON = 13;
-
-const int PIN_SDA = 12;
-const int PIN_SCL = 0;
 
 
 
 
 static const char *hex="0123456789ABCDEF";
-static bool isSetup = false;
 
-const int ACTION_NONE = 0;
-const int ACTION_ON = 1;
-const int ACTION_OFF = 2;
-const int ACTION_TOGGLE = 3;
-const int ACTION_PULSEOFF = 4;
-const int ACTION_PULSEON = 5;
-const char *actionString[] = { "None", "On", "Off", "Toggle", "Pulse Off", "Pulse On" };
-const int MAXEVENTS = 24;
-
-typedef struct {
-  byte dayMask; // binary flags per-day
-  byte hour;
-  byte minute;
-  byte action;
-} Event;
-
-const byte SETTINGSVERSION = 4;
-typedef struct {
-  byte version;
-  char ssid[33];
-  char psk[64];
-  char hostname[33];
-  bool useDHCP;
-  byte ip[4];
-  byte dns[4];
-  byte gateway[4];
-  byte netmask[4];
-  char ntp[65];
-  int utc;
-  bool onAfterPFail;
-  
-  // MQTT Configuration
-  bool mqttEnable;
-  char mqttHost[33];
-  int mqttPort;
-  bool mqttSSL;
-  char mqttUser[32];
-  char mqttPass[64];
-
-  // Web Interface
-  bool uiEnable;
-  char uiUser[32];
-  char uiPassEnc[20];
-  char uiSalt[32];
-  bool uiHTTPS;
-
-  // Events to process
-  Event event[MAXEVENTS];
-} Settings;
-static Settings settings;
-
-
-// Set the settings.uiPassEnc to the raw password and callthis to make a new salt and run encryption against it
-// Output overwrites the uiPassEnc variable
-void HashPassword(const char *pass)
+void DefaultSSID(char *ssid)
 {
-  memset(settings.uiSalt, 0, sizeof(settings.uiSalt)); // Clear salt to start
-  memset(settings.uiPassEnc, 0, sizeof(settings.uiPassEnc)); // Clear salt to start
-  if (pass[0]==0) return; // No password
-  for (int i=0; i<sizeof(settings.uiSalt); i++)
-    settings.uiSalt[i] = RANDOM_REG32 & 0xff;
-
-  // Now catenate the hash and raw password to temp storage
-  char raw[128];
-  memset(raw, 0, 128);
-  memcpy(raw, settings.uiSalt, sizeof(settings.uiSalt));
-  strncpy(raw+sizeof(settings.uiSalt), pass, 64);
-  int len = strnlen(pass, 63)+1;
-//  while (*pass) { *(pass++) = 0; } // clear out sent-in 
-  sha1((uint8_t*)raw, sizeof(settings.uiSalt)+len, (uint8_t*)settings.uiPassEnc);
-  memset(raw, 0, 128);
+  byte mac[6];
+  WiFi.macAddress(mac);
+  sprintf(ssid, "WIFIPLUG-%02X%02X%02X", mac[3], mac[4], mac[5]);
 }
 
-bool VerifyPassword(char *pass)
-{
-  // Now catenate the hash and raw password to temp storage
-  char raw[128];
-  memset(raw, 0, 128);
-  memcpy(raw, settings.uiSalt, sizeof(settings.uiSalt));
-  strncpy(raw+sizeof(settings.uiSalt), pass, 64);
-  int len = strnlen(pass, 63)+1;
-  while (*pass) { *(pass++) = 0; } // clear out sent-in 
-  char *dest[20];
-  sha1((uint8_t*)raw, sizeof(settings.uiSalt)+len, (uint8_t*)dest);
-  memset(raw, 0, 128);
-  if (memcmp(settings.uiPassEnc, dest, 20)) return false;
-  return true;
-}
 
-byte CalcSettingsChecksum()
-{
-  byte *p = (byte*)&settings;
-  byte c = 0xef;
-  for (int j=0; j<sizeof(settings); j++) c ^= *(p++);
-  return c;
-}
+
 
 char *hx(byte p)
 {
@@ -170,70 +88,6 @@ void SerHex(void *pv, int len)
   byte *p = (byte*)pv;
   while (len--) Serial.print(hx(*(p++)));
   Serial.println("");
-}
-
-void LoadSettings(bool reset)
-{
-  EEPROM.begin(4096);
-  // Try and read from "EEPROM", if that fails use defaults
-  byte *p = (byte *)&settings;
-  for (int i=0; i<sizeof(settings); i++) {
-    byte b = EEPROM.read(i);
-    *(p++) = b;
-  }
-  byte chk = EEPROM.read(sizeof(settings));
-  byte notChk = EEPROM.read(sizeof(settings)+1);
-
-  byte calcChk = CalcSettingsChecksum();
-  byte notCalcChk = ~calcChk;
-
-  if ((chk != calcChk) || (notChk != notCalcChk) ||(settings.version != SETTINGSVERSION) || (reset)) {
-    Serial.println("Setting checksum mismatch, generating default settings");
-    Serial.flush();
-    memset(&settings, 0, sizeof(settings));
-    settings.version = SETTINGSVERSION;
-    settings.ssid[0] = 0;
-    settings.psk[0] = 0;
-    strcpy(settings.hostname, "wifiplug");
-    settings.useDHCP = true;
-    memset(settings.ip, 0, 4);
-    memset(settings.dns, 0, 4);
-    memset(settings.gateway, 0, 4);
-    memset(settings.netmask, 0, 4);
-    strcpy(settings.ntp, "us.pool.ntp.org");
-    strcpy(settings.uiUser, "admin");
-    HashPassword("admin"); // This will set settings.uiPassEnc
-    settings.utc =-7;
-    settings.onAfterPFail = false;
-    settings.mqttEnable = false;
-    settings.uiEnable = true;
-    isSetup = false;
-  } else {
-    Serial.print("Settings restored from EEPROM\n");
-    Serial.flush();
-    isSetup = true;
-  }
-  EEPROM.end();
-  Serial.print("Salt: ");
-  SerHex(settings.uiSalt, sizeof(settings.uiSalt));
-  Serial.print("Pass: ");
-  SerHex(settings.uiPassEnc, sizeof(settings.uiPassEnc));
-}
-
-void SaveSettings()
-{
-  EEPROM.begin(4096);
-  byte *p = (byte *)&settings;
-  for (int i=0; i<sizeof(settings); i++) EEPROM.write(i, *(p++));
-  byte ck = CalcSettingsChecksum();
-  EEPROM.write(sizeof(settings), ck);
-  EEPROM.write(sizeof(settings)+1, ~ck);
-  EEPROM.end();
-    Serial.print("Salt: ");
-  SerHex(settings.uiSalt, sizeof(settings.uiSalt));
-  Serial.print("Pass: ");
-  SerHex(settings.uiPassEnc, sizeof(settings.uiPassEnc));
-
 }
 
 // Return a *static* char * to an IP formatted string, so DO NOT USE MORE THAN ONCE PER LINE
@@ -262,25 +116,28 @@ void PrintSettings(WiFiClient *client)
     WebPrintf(client, "Netmask: %s<br>\n", PrintIP(settings.netmask));
     WebPrintf(client, "DNS: %s<br>\n", PrintIP(settings.dns));
   }
+  WebPrintf(client, "UDP Log Server: %s:9911 (nc -l -u 911)<br>\n", PrintIP(settings.logsvr));
   
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
   WebPrintf(client, "NTP: %s<br>\n", settings.ntp);
   WebPrintf(client, "UTC Offset: %d<br>\n", settings.utc);
 
-  WebPrintf(client, "<br><h1>Power Failure Recovery</h1>\n");
+  WebPrintf(client, "<br><h1>Power Settings</h1>\n");
+  WebPrintf(client, "System Voltage: %d<br>\n", settings.voltage);
   WebPrintf(client, "On after power failure: %s<br>\n", PrintBool(settings.onAfterPFail));
 
   WebPrintf(client, "<br><H1>MQTT</h1>\n");
   WebPrintf(client, "Host: %s<br>\n", settings.mqttHost);
   WebPrintf(client, "Port: %d<br>\n", settings.mqttPort);
   WebPrintf(client, "Use SSL: %s<br>\n", PrintBool(settings.mqttSSL));
+  WebPrintf(client, "ClientID: %s<br>\n", settings.mqttClientID);
+  WebPrintf(client, "Topic: %s<br>\n", settings.mqttTopic);
   WebPrintf(client, "User: %s<br>\n", settings.mqttUser);
   WebPrintf(client, "Pass: %s<br>\n", settings.mqttPass);
 
   WebPrintf(client, "<br><h1>Web UI</h1>\n");
   WebPrintf(client, "Admin User: %s<br>\n", settings.uiUser);
   WebPrintf(client, "Admin Pass: %s<br>\n", "*HIDDEN*");
-  WebPrintf(client, "Enable HTTPS Access: %s<br>\n", PrintBool(settings.uiHTTPS));
 }
 
 void WebError(WiFiClient *client, const char *ret, const char *headers, const char *body)
@@ -297,88 +154,7 @@ void WebError(WiFiClient *client, const char *ret, const char *headers, const ch
   WebPrintf(client, "<body><h1>%s</h1><p>%s</p></body></html>\r\n", ret, body);
 }
 
-// Check if button has been pressed (after debounce) and return one event for press and one for release
-const byte BUTTON_NONE = 0;
-const byte BUTTON_PRESS = 1;
-const byte BUTTON_RELEASE = 2;
 
-byte ManageButton()
-{
-  static bool ignoring = false;
-  static unsigned long checkTime = 0;
-  static bool prevButton = false;
-  static bool debounceButton = false;
-  byte event = BUTTON_NONE;
-  
-  if (!ignoring) {
-    bool curButton = !digitalRead(PIN_BUTTON);
-    if (curButton != prevButton) {
-      ignoring = true;
-      checkTime = micros() + 5000;
-    }
-    prevButton = curButton;
-  } else {
-    bool curButton = !digitalRead(PIN_BUTTON);
-    if (curButton != prevButton) {
-      // Noise, reset the clock
-      ignoring = false;
-    } else if (micros() > checkTime) {
-      if (curButton != debounceButton) {
-        event = (debounceButton)?BUTTON_RELEASE:BUTTON_PRESS;
-        debounceButton = curButton;
-      }
-      ignoring = false;
-    }
-  }
-  return event;
-}
-
-// Handle automated on/off simply on the assumption we don't lose any minutes
-static int lastHour = -1;
-static int lastMin = -1;
-static int lastDOW = -1;
-void ManageSchedule()
-{
-
-  // If this is a new h/m/dow then go through all events and see if we need to do an action.
-  // Only execute after we scan everything, so only action done once even if there are
-  // multiple entries for the same time
-
-  time_t t = now();
-  int newHour = hour(t);
-  int newMin = minute(t);
-  int newDOW = weekday(t)-1;
-  if (newHour != lastHour || newMin != lastMin || newDOW != lastDOW) {
-    Serial.print("ManageSchedule new time check: ");
-    Serial.print(newHour); Serial.print(":"); Serial.print(newMin); Serial.print(" weekday "); Serial.println(newDOW);
-    int action = ACTION_NONE;
-    // This *should* be fast unless we lose a day somewhere (NTP problems?)
-    while (newHour != lastHour || newMin != lastMin || newDOW != lastDOW) {
-      lastMin++;
-      if (lastMin==60) { lastHour++; lastMin = 0; }
-      if (lastHour==24) { delay(1); /* allow ctx switch */ lastDOW++; lastHour = 0; }
-      if (lastDOW==7) lastDOW = 0; // Sat->Sun
-      for (int i=0; i<MAXEVENTS; i++) {
-        if ((settings.event[i].dayMask & (1<<lastDOW)) && (settings.event[i].hour == lastHour) && (settings.event[i].minute == lastMin) && (settings.event[i].action != ACTION_NONE)) {
-          action = settings.event[i].action;
-        }
-      }
-    }
-    switch (action) {
-      case ACTION_NONE: break;
-      case ACTION_ON: digitalWrite(PIN_RELAY, HIGH); break;
-      case ACTION_OFF: digitalWrite(PIN_RELAY, LOW); break;
-      case ACTION_TOGGLE: digitalWrite(PIN_RELAY, digitalRead(PIN_RELAY)==LOW?HIGH:LOW); break;
-      case ACTION_PULSEOFF: digitalWrite(PIN_RELAY, LOW); delay(500); digitalWrite(PIN_RELAY, HIGH); break;
-      case ACTION_PULSEON: digitalWrite(PIN_RELAY, HIGH); delay(500); digitalWrite(PIN_RELAY, LOW); break;
-    }
-
-    lastHour = hour(t);
-    lastMin = minute(t);
-    lastDOW = weekday(t)-1; // Sunday=1 for weekday(), we need 0-index
-  
-  }
-}
 
 void WebHeaders(WiFiClient *client, const char *headers)
 {
@@ -397,20 +173,11 @@ void WebHeaders(WiFiClient *client, const char *headers)
 void StartSetupAP()
 {
   char ssid[16];
-  byte mac[6];
-  byte i = 0;
 
   Serial.print("Starting Setup AP Mode\n");
+
   isSetup = false;
-  WiFi.macAddress(mac);
-  memcpy(ssid, "WIFIPLUG-", i=9);
-  for (byte j=3; j<6; j++) {
-    ssid[i++] = hex[(mac[j]&0xf0)>>4];
-    ssid[i++] = hex[mac[j]&0x0f];
-  }
-  ssid[i++] = 0;
-  
-  Serial.println(ssid);
+  DefaultSSID(ssid);
   WiFi.softAP(ssid);
 
   Serial.print("Waiting for connection\n");
@@ -432,21 +199,24 @@ void StartSTA()
 
   // Try for 15 seconds, then revert to config
   for (byte i=1; i<15 && WiFi.status() != WL_CONNECTED; i++) {
-    digitalWrite(PIN_LED, LOW);
-    delay(900);
-    digitalWrite(PIN_LED, HIGH);
-    delay(100);
+    // TODO - what about milis() overflow...
+    int timeout = millis() + 1000; // Wait 1 second just sleeping...
+    while (millis() < timeout) {
+      ManageLED(LED_CONNECTING);
+      delay(10);
+    }
   }
   if (WiFi.status() != WL_CONNECTED) {
     StartSetupAP();
   } else {
     // Start standard interface
     webIface.begin();
-    // Enable NTP timekeeping
-    ntpUDP.begin(8675); // 309
-    setSyncProvider(getNtpTime);
-    setSyncInterval(300);
+    StartNTP();
   }
+
+  StartLog();
+  LogSettings();
+  StartMQTT();
 }
 
 // In-place decoder, overwrites source with decoded values.  Needs 0-termination on input
@@ -493,11 +263,11 @@ void URLDecode(char *ptr)
         byte a = *(ptr + 1);
         byte b = *(ptr + 2);
         if (a>='0' && a<='9') a -= '0';
-        else if (a>='a' && a<='f') a -= 'a' + 10;
-        else if (a>='A' && a<='F') a -= 'A' + 10;
+        else if (a>='a' && a<='f') a = a - 'a' + 10;
+        else if (a>='A' && a<='F') a = a - 'A' + 10;
         if (b>='0' && b<='9') b -= '0';
-        else if (b>='a' && b<='f') b -= 'a' + 10;
-        else if (b>='A' && b<='F') b -= 'A' + 10;
+        else if (b>='a' && b<='f') b = b - 'a' + 10;
+        else if (b>='A' && b<='F') b = b - 'A' + 10;
         *ptr = ((a&0x0f)<<4) | (b&0x0f);
         // Safe strcpy the rest of the string back
         char *p1 = ptr + 1;
@@ -515,77 +285,94 @@ void URLDecode(char *ptr)
 bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool authReq)
 {
   static char NUL = 0; // Get around writable strings...
+  char hdrBuff[256];
   char authBuff[256];
 
   *urlStr = NULL;
   *paramStr = NULL;
   
-  int timeout = 1000; // Max delay before we timeout
+  int timeout = 2000; // Max delay before we timeout
   while (!client->available() && timeout) { delay(1); timeout--; }
   if (!timeout) {
     client->flush();
     return false;
   }
-
-  int wlen = (byte)client->readBytesUntil('\r', reqBuff, sizeof(reqBuff)-1);
+  int wlen = client->readBytesUntil('\r', reqBuff, sizeof(reqBuff)-1);
   reqBuff[wlen] = 0;
-  Serial.print("request: ");
-  Serial.println(reqBuff);
-
-  if (memcmp(reqBuff, "GET ", 4)) {
-    // Not a GET, error
-    WebError(client, "405 Method Not Allowed", "Allow: GET\r\n", "Only GET requests supported");
-    return false;
-  }
 
   bool empty = true;
   for (int i=0; i<sizeof(settings.uiSalt); i++) if (settings.uiSalt[i]) empty = false;
+
+  int hlen = 0;
+  authBuff[0] = 0; // Start w/o authorization hdr
+  // Parse through all headers until \r\n\r\n
+  do {
+    uint8_t newline;
+    client->read(&newline, 1); // Get rid of \n
+    hlen = (byte)client->readBytesUntil('\r', hdrBuff, sizeof(hdrBuff)-1);
+    hdrBuff[hlen] = 0;
+    if (!strncmp("Authorization: Basic ", hdrBuff, 21)) {
+      strcpy(authBuff, hdrBuff);
+    }
+  } while (hlen > 0);
+
   if (authReq && settings.uiUser[0] && !empty) {
-    int alen;
-    do {
-      uint8_t newline;
-      client->read(&newline, 1); // Get rid of \n
-      alen = (byte)client->readBytesUntil('\r', authBuff, sizeof(authBuff)-1);
-      authBuff[alen] = 0;
-      Serial.print("hdr: "); Serial.println(authBuff);
-    } while (alen && strncmp("Authorization: Basic ", authBuff, 21));
-    client->flush();
-    Serial.print("auth: "); Serial.println(authBuff);
-    Serial.print("decoding: "); Serial.println(authBuff+21);
     Base64Decode(authBuff+21);
-    Serial.print("decoded: "); Serial.println(authBuff+21);
     char *user = authBuff+21;
     char *pass = user;
     while (*pass && *pass != ':') pass++; // Advance to the : or \0
     if (*pass) { *pass = 0; pass++; } // Skip the :, end the user string
-    Serial.print("user: "); Serial.println(user);
-    Serial.print("pass: "); Serial.println(pass);
     bool matchUser = !strcmp(user, settings.uiUser);
     bool matchPass = VerifyPassword(pass);
-    Serial.print(matchUser?"user: match\n":"user: error\n");
-    Serial.print(matchPass?"pass: match\n":"pass: error\n");
-    
     if (!authBuff[0] || !matchUser || !matchPass) {
       WebError(client, "401 Unauthorized", "WWW-Authenticate: Basic realm=\"WIFIPlug\"\r\n", "Login required.");
       return false;
     }
   }
   
-  // Delete HTTP version
-  char *httpVer = strchr(reqBuff+4, ' ');
-  if (httpVer) *httpVer = 0;
+  // Delete HTTP version (well, anything after the 2nd space)
+  char *ptr = reqBuff;
+  while (*ptr && *ptr!=' ') ptr++;
+  if (*ptr) ptr++;
+  while (*ptr && *ptr!=' ') ptr++;
+  *ptr = 0;
 
   URLDecode(reqBuff);
 
-  // Break into URL and form data
-  char *url = reqBuff+4;
-  while (*url && *url=='/') url++; // Strip off leading /s
-  char *qp = strchr(url, '?');
-  if (qp) {
-    *qp = 0; // End URL
-    qp++;
+  char *url;
+  char *qp;
+  if (!memcmp(reqBuff, "GET ", 4)) {
+    client->flush(); // Don't need anything here...
+    
+    // Break into URL and form data
+    url = reqBuff+4;
+    while (*url && *url=='/') url++; // Strip off leading /s
+    qp = strchr(url, '?');
+    if (qp) {
+      *qp = 0; // End URL
+      qp++;
+    } else {
+      qp = &NUL;
+    }
+  } else if (!memcmp(reqBuff, "POST ", 5)) {
+    uint8_t newline;
+    client->read(&newline, 1); // Get rid of \n
+
+    url = reqBuff+5;
+    while (*url && *url=='/') url++; // Strip off leading /s
+    qp = strchr(url, '?');
+    if (qp) *qp = 0; // End URL @ ?
+    // In a POST the params are in the body
+    int sizeleft = sizeof(reqBuff) - strlen(reqBuff) - 1;
+    qp = reqBuff + strlen(reqBuff) + 1;
+    int wlen = client->readBytesUntil('\r', qp, sizeleft-1);
+    qp[wlen] = 0;
+    client->flush();
+    URLDecode(qp);
   } else {
-    qp = &NUL;
+    // Not a GET or POST, error
+    WebError(client, "405 Method Not Allowed", "Allow: GET, POST\r\n", "Only GET or POST requests supported.");
+    return false;
   }
 
   if (urlStr) *urlStr = url;
@@ -594,7 +381,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
   return true;
 }
 
-// Scan out and update a pointer into the param string, returning the name and value or false if done
+// Scan out and update a pointeinto the param string, returning the name and value or false if done
 bool ParseParam(char **paramStr, char **name, char **value)
 {
   char *data = *paramStr;
@@ -654,7 +441,7 @@ void SendSetupHTML(WiFiClient *client)
   WebHeaders(client, NULL);
   WebPrintf(client, "<html><head><title>WIFIPlug Setup</title></head>\n");
   WebPrintf(client, "<body><h1>WIFIPlug Setup</h1>\n");
-  WebPrintf(client, "<form action=\"config.html\">\n");
+  WebPrintf(client, "<form action=\"config.html\" method=\"POST\">\n");
 
   WebPrintf(client, "<br><h1>WiFi Network</h1>\n");
   WebFormText(client, "SSID", "ssid", settings.ssid, true);
@@ -666,29 +453,32 @@ void SendSetupHTML(WiFiClient *client)
   WebFormText(client, "Netmask", "netmask", PrintIP(settings.netmask), !settings.useDHCP);
   WebFormText(client, "Gateway", "gw", PrintIP(settings.gateway), !settings.useDHCP);
   WebFormText(client, "DNS", "dns", PrintIP(settings.dns), !settings.useDHCP);
+  WebFormText(client, "UDP Log Server", "logsvr", PrintIP(settings.logsvr), true);
   
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
   WebFormText(client, "NTP Server", "ntp", settings.ntp, true);
   WebFormText(client, "UTC Offset", "utcoffset", settings.utc, true);
 
-  WebPrintf(client, "<br><h1>Power Failure Recovery</h1>\n");
+  WebPrintf(client, "<br><h1>Power</h1>\n");
+  WebFormText(client, "Mains Voltage", "voltage", settings.voltage, true);
   WebFormCheckbox(client, "Start powered up after power loss", "onafterpfail", settings.onAfterPFail, true);
 
   WebPrintf(client, "<br><H1>MQTT</h1>\n");
-  const char *ary2[] = { "mqtthost", "mqttport", "mqttssl", "mqttuser", "mqttpass", "" };
+  const char *ary2[] = { "mqtthost", "mqttport", "mqttssl", "mqttuser", "mqttpass", "mqtttopic", "mqttclientid", "" };
   WebFormCheckboxDisabler(client, "Enable MQTT", "mqttEnable", true, settings.mqttEnable, true, ary2 );
   WebFormText(client, "Host", "mqtthost", settings.mqttHost, settings.mqttEnable);
   WebFormText(client, "Port", "mqttport", settings.mqttPort, settings.mqttEnable);
   WebFormCheckbox(client, "Use SSL", "mqttssl", settings.mqttSSL, settings.mqttEnable);
   WebFormText(client, "User", "mqttuser", settings.mqttUser, settings.mqttEnable);
   WebFormText(client, "Pass", "mqttpass", settings.mqttPass, settings.mqttEnable);
+  WebFormText(client, "ClientID", "mqttclientid", settings.mqttClientID, settings.mqttEnable);
+  WebFormText(client, "Topic", "mqtttopic", settings.mqttTopic, settings.mqttEnable);
 
   WebPrintf(client, "<br><h1>Web UI</h1>\n");
   const char *ary3[] = { "uiuser", "uipass", "uihttps", "" };
   WebFormCheckboxDisabler(client, "Enable Web UI", "uienable", true, settings.uiEnable, true, ary3 );
   WebFormText(client, "Admin User", "uiuser", settings.uiUser, settings.uiEnable);
-  WebFormText(client, "Admin Password", "uipass", "", settings.uiEnable);
-  WebFormCheckbox(client, "Enable HTTPS", "uihttps", settings.uiHTTPS, settings.uiEnable);
+  WebFormText(client, "Admin Password", "uipass", "*****", settings.uiEnable);
 
   WebPrintf(client, "<input type=\"submit\" value=\"Submit\">\n");
   WebPrintf(client, "</form></body></html>\n");
@@ -700,14 +490,15 @@ void SendSetupHTML(WiFiClient *client)
 // Status Web Page
 void SendStatusHTML(WiFiClient *client)
 {
-  bool curPower = digitalRead(PIN_RELAY)==LOW;
-  
+  bool curPower = !GetRelay();
   time_t t = now();
+  
   WebHeaders(client, NULL);
   WebPrintf(client, "<html><head><title>WIFIPlug Status</title></head>\n");
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Current Time: %d:%02d:%02d %d/%d/%d<br>\n", hour(t), minute(t), second(t), month(t), day(t), year(t));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
+  WebPrintf(client, "Current: %dmA (%dW @ %dV)<nr>\n", lastCurrentMa, (lastCurrentMa * 120) / 1000, settings.voltage);
 
   WebPrintf(client, "<table border=\"1px\">\n");
   WebPrintf(client, "<tr><th>#</th><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Time</th><th>Action</th><th>EDIT</th></tr>");
@@ -733,7 +524,7 @@ void SendEditHTML(WiFiClient *client, int id)
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "<h1>Editing rule %d</h1>\n", id+1);
 
-  WebPrintf(client, "<form action=\"update.html\">\n");
+  WebPrintf(client, "<form action=\"update.html\" method=\"POST\">\n");
   WebPrintf(client, "<input type=\"hidden\" name=\"id\" value=\"%d\">\n", id);
   WebPrintf(client, "<table border=\"1px\">\n");
   WebPrintf(client, "<tr><th>#</th><th>All</th><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Time</th><th>Action</th></tr>\n");
@@ -755,7 +546,7 @@ void SendEditHTML(WiFiClient *client, int id)
   for (int j=0; j<60; j++) WebPrintf(client, "<option %s>%02d</option>", (settings.event[id].minute==j)?"selected":"", j);
   WebPrintf(client, "</select> <select name=\"ampm\"><option %s>AM</option><option %s>PM</option></select></td>", settings.event[id].hour<12?"selected":"", settings.event[id].hour>=12?"selected":"");
   WebPrintf(client, "<td>\n<select name=\"action\">");
-  for (int j=0; j<sizeof(actionString)/sizeof(actionString[0]); j++) WebPrintf(client, "<option %s>%s</option>", settings.event[id].action==j?"selected":"", actionString[j]);
+  for (int j=0; j<=ACTION_MAX; j++) WebPrintf(client, "<option %s>%s</option>", settings.event[id].action==j?"selected":"", actionString[j]);
   WebPrintf(client, "</select></td></table><br>\n");
   WebPrintf(client, "<input type=\"submit\" value=\"Submit\">\n");
   WebPrintf(client, "</form></body></html>\n");
@@ -773,46 +564,33 @@ void setup()
   Serial.begin(9600);
   Serial.print("Starting up...\n");
   delay(1000);
-  pinMode(PIN_BUTTON, INPUT_PULLUP);
-  digitalWrite(PIN_LED, HIGH);
-  pinMode(PIN_LED, OUTPUT);
-  digitalWrite(PIN_RELAY, LOW);
-  pinMode(PIN_RELAY, OUTPUT);
 
-  // Power Monitoring
-  pinMode(PIN_SDA, INPUT_PULLUP);
-  Wire.begin(PIN_SDA, PIN_SCL);
-
+  StartRelay();
+  StartButton();
+  StartLED();
+  StartPowerMonitor();
+  
   delay(1);
   Serial.print("Loading Settings\n");
   Serial.flush();
-  LoadSettings(digitalRead(PIN_BUTTON)==LOW?true:false);
-  if (settings.onAfterPFail) digitalWrite(PIN_RELAY, HIGH);
+  
+  bool ok = LoadSettings(RawButton());
+  SetRelay(settings.onAfterPFail?true:false); 
 
-  if (!isSetup) StartSetupAP();
-  else StartSTA();
+  if (ok) {
+    isSetup = true;
+    StartSTA();
+  } else {
+    isSetup = false;
+    StartSetupAP();
+  }
 
   Serial.print("End setup()\n");
 }
 
 
-int lastReadMS = 0;
-uint32_t rawPwr[4];
-void ReadPowerMonitor()
-{
-  char d[16];
-  byte count = 0;
-  Wire.requestFrom(0, 16);
-  lastReadMS = millis();
-  while (count < 16) {
-    if (Wire.available()) d[count++] = Wire.read();
-    else yield();
-  }
-  rawPwr[0] = ((uint32_t)d[0]<<24) | ((uint32_t)d[1]<<16) | ((uint32_t)d[2]<<8) | ((uint32_t)d[3]);
-  rawPwr[1] = ((uint32_t)d[4]<<24) | ((uint32_t)d[5]<<16) | ((uint32_t)d[6]<<8) | ((uint32_t)d[7]);
-  rawPwr[2] = ((uint32_t)d[8]<<24) | ((uint32_t)d[9]<<16) | ((uint32_t)d[10]<<8) | ((uint32_t)d[11]);
-  rawPwr[3] = ((uint32_t)d[12]<<24) | ((uint32_t)d[13]<<16) | ((uint32_t)d[14]<<8) | ((uint32_t)d[15]);
-}
+//uint32_t rawPwr[4];
+
 
 // Scan an integer from a string, place it into dest, and then return # of bytes scanned
 int ParseInt(char *src, int *dest)
@@ -867,7 +645,8 @@ void ParseSetupForm(char *params)
     Param4Int("netmask", settings.netmask);
     Param4Int("gw", settings.gateway);
     Param4Int("dns", settings.dns);
-
+    Param4Int("logsvr", settings.logsvr);
+    
     ParamText("ntp", settings.ntp);
     ParamInt("utcoffset", settings.utc);
 
@@ -876,7 +655,13 @@ void ParseSetupForm(char *params)
     ParamCheckbox("mqttEnable", settings.mqttEnable);
     ParamText("mqtthost", settings.mqttHost);
     ParamInt("mqttport", settings.mqttPort);
+    int v;
+    ParamInt("voltage", v);
+    if (v<80 | v>255) v=120;
+    settings.voltage = v;
     ParamCheckbox("mqttssl", settings.mqttSSL);
+    ParamText("mqtttopic", settings.mqttTopic);
+    ParamText("mqttclientid", settings.mqttClientID);
     ParamText("mqttuser", settings.mqttUser);
     ParamText("mqttpass", settings.mqttPass);
 
@@ -884,10 +669,13 @@ void ParseSetupForm(char *params)
     ParamText("uiuser", settings.uiUser);
     char tempPass[64];
     ParamText("uipass", tempPass);
-    HashPassword(tempPass); // This will set settings.uiPassEnc
-    memset(tempPass, 0, sizeof(tempPass));
-    ParamCheckbox("uihttps", settings.uiHTTPS);
+    if (strcmp("*****", tempPass)) {
+      // Was changed, regenerate salt and store it
+      HashPassword(tempPass); // This will set settings.uiPassEnc
+    }
+    memset(tempPass, 0, sizeof(tempPass)); // I think I'm paranoid
   }
+  LogSettings();
 }
 
 void SendRebootHTML(WiFiClient *client)
@@ -902,23 +690,14 @@ void SendRebootHTML(WiFiClient *client)
   WebPrintf(client, "</body>");
 }
 
-const byte ledSetup[20] = {0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1};
-const byte ledActive[20] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+
 void loop()
 {
   // Let the button toggle the relay always
-  byte happen = ManageButton();
-  if (happen==BUTTON_PRESS) {
-    Serial.println("button pressed");
-    digitalWrite(PIN_RELAY, digitalRead(PIN_RELAY)==LOW?HIGH:LOW);
-  }
-  if (happen==BUTTON_RELEASE) Serial.println("button released");
+  ManageButton();
 
-  if (!isSetup) {
-    digitalWrite(PIN_LED, ledSetup[(millis()/100)%20]?LOW:HIGH);
-  } else {
-    digitalWrite(PIN_LED, ledActive[(millis()/100)%20]?LOW:HIGH);
-  }
+  // Blink the LED appropriate to the state
+  ManageLED(isSetup ? LED_CONNECTED :  LED_AWAITSETUP);
   
   char *url;
   char *params;
@@ -948,15 +727,10 @@ void loop()
       WebError(&client, "400", NULL, "Bad Request");
     }
   } else {
-    if (timeStatus() != timeNotSet) {
-      if (lastHour == -1) {
-        time_t t = now();
-        lastHour = hour(t);
-        lastMin = minute(t);
-        lastDOW = weekday(t) - 1; // We 0-index, weekday() 1-indexes
-      }
-      ManageSchedule();
-    }
+    ManageMQTT();
+    ManageSchedule();
+    ManagePowerMonitor();
+    
     WiFiClient client = webIface.available();
     if (!client) return;
 
@@ -965,10 +739,10 @@ void loop()
       if (IsIndexHTML(url)) {
         SendStatusHTML(&client);
       } else if (!strcmp("on.html", url)) {
-        digitalWrite(PIN_RELAY, HIGH);
+        SetRelay(true);
         SendSuccessHTML(&client);
       } else if (!strcmp("off.html", url)) {
-        digitalWrite(PIN_RELAY, LOW);
+        SetRelay(false);
         SendSuccessHTML(&client);
       } else if (!strcmp(url, "hang.html")) {
         while (1) ; // WDT will fire and we'll reboot
@@ -996,7 +770,7 @@ void loop()
           ParamInt("mn", mn);
           if (!strcmp(namePtr, "ampm")) { if (!strcmp("AM", valPtr)) ampm=0; else if (!strcmp("PM", valPtr)) ampm=1; }
           if (!strcmp(namePtr, "action")) {
-            for (int i=0; i<sizeof(actionString)/sizeof(actionString[0]); i++) if (!strcmp(valPtr, actionString[i])) action = i;
+            for (int i=0; i<=ACTION_MAX; i++) if (!strcmp(valPtr, actionString[i])) action = i;
           }
           if (namePtr[0]>='a' && namePtr[0]<='g' && namePtr[1]==0) {
             if (!strcmp(valPtr, "on")) mask |= 1<<(namePtr[0]-'a');
@@ -1008,8 +782,8 @@ void loop()
         if (hr < 0 || hr > 12) err = true;
         if (mn < 0 || mn >= 60) err = true;
         if (ampm < 0 || ampm > 1) err = true;
-        if (action < 0 || action >= sizeof(actionString)/sizeof(actionString[0])) err = true;
-        Serial.print("id=");Serial.println(id);Serial.print("hr:"); Serial.println(hr);Serial.print("mn:"); Serial.println(mn); Serial.print("ampm:");Serial.println(ampm);
+        if (action < 0 || action > ACTION_MAX ) err = true;
+        
         if (hr==12 && ampm==0) { hr = 0; }
         if (err) {
           WebError(&client, "400", NULL, "Bad Request");
@@ -1029,13 +803,13 @@ void loop()
         SendRebootHTML(&client);
         SaveSettings();
         client.stop();
-        ntpUDP.stop();
+        StopNTP();
+        StopLog();
+        StopSchedule();
+        StopMQTT();
         webIface.stop();
         WiFi.mode(WIFI_OFF);
-        // Cause new time to be retrieved.
-        lastHour = -1;
-        lastMin = -1;
-        lastDOW = -1;
+
         StartSTA();
       } else {
         WebError(&client, "404", NULL, "Not Found");
@@ -1045,59 +819,6 @@ void loop()
 }
 
 
-/*-------- NTP code ----------*/
-/* Taken from the ESP8266 WebClient NTP sample */
-const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
-byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
 
-time_t getNtpTime()
-{
-  IPAddress ntpServerIP; // NTP server's ip address
 
-  while (ntpUDP.parsePacket() > 0) ; // discard any previously received packets
-  Serial.println("Transmit NTP Request");
-  // get a random server from the pool
-  WiFi.hostByName(settings.ntp, ntpServerIP);
-  sendNTPpacket(ntpServerIP);
-  uint32_t beginWait = millis();
-  while (millis() - beginWait < 1500) {
-    int size = ntpUDP.parsePacket();
-    if (size >= NTP_PACKET_SIZE) {
-      Serial.println("Receive NTP Response");
-      ntpUDP.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
-      unsigned long secsSince1900;
-      // convert four bytes starting at location 40 to a long integer
-      secsSince1900 =  (unsigned long)packetBuffer[40] << 24;
-      secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
-      secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
-      secsSince1900 |= (unsigned long)packetBuffer[43];
-      return secsSince1900 - 2208988800UL + settings.utc * SECS_PER_HOUR;
-    }
-  }
-  Serial.println("No NTP Response :-(");
-  return 0; // return 0 if unable to get the time
-}
-
-// send an NTP request to the time server at the given address
-void sendNTPpacket(IPAddress &address)
-{
-  // set all bytes in the buffer to 0
-  memset(packetBuffer, 0, NTP_PACKET_SIZE);
-  // Initialize values needed to form NTP request
-  // (see URL above for details on the packets)
-  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-  packetBuffer[1] = 0;     // Stratum, or type of clock
-  packetBuffer[2] = 6;     // Polling Interval
-  packetBuffer[3] = 0xEC;  // Peer Clock Precision
-  // 8 bytes of zero for Root Delay & Root Dispersion
-  packetBuffer[12] = 49;
-  packetBuffer[13] = 0x4E;
-  packetBuffer[14] = 49;
-  packetBuffer[15] = 52;
-  // all NTP fields have been given values, now
-  // you can send a packet requesting a timestamp:
-  ntpUDP.beginPacket(address, 123); //NTP requests are to port 123
-  ntpUDP.write(packetBuffer, NTP_PACKET_SIZE);
-  ntpUDP.endPacket();
-}
 
