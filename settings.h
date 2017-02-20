@@ -1,5 +1,5 @@
 /*
-  Psychoplug
+  PsychoPlug
   ESP8266 based remote outlet with standalone timer and MQTT integration
   
   Copyright (C) 2017  Earle F. Philhower, III
@@ -22,9 +22,7 @@
 #define _settings_h
 
 #include <Arduino.h>
-
 #include "schedule.h"
-
 
 const byte SETTINGSVERSION = 1;
 typedef struct {
@@ -55,7 +53,6 @@ typedef struct {
   char mqttPass[64];
 
   // Web Interface
-  bool uiEnable;
   char uiUser[32];
   char uiPassEnc[20];
   char uiSalt[32];

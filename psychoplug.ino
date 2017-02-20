@@ -1,5 +1,5 @@
 /*
-  Psychoplug
+  PsychoPlug
   ESP8266 based remote outlet with standalone timer and MQTT integration
   
   Copyright (C) 2017  Earle F. Philhower, III
@@ -42,53 +42,17 @@ bool isSetup = false;
 Settings settings;
 
 
-
-
-
-
 // Global way of writing out dynamic HTML to socket
 // snprintf guarantees a null termination
-#define WebPrintf(c, fmt, ...) { char webBuff[512]; snprintf(webBuff, sizeof(webBuff), fmt, ## __VA_ARGS__); (c)->print(webBuff); /*Serial.print(webBuff); Serial.flush();*/}
+#define WebPrintf(c, fmt, ...) { char webBuff[512]; snprintf(webBuff, sizeof(webBuff), fmt, ## __VA_ARGS__); (c)->print(webBuff); }
 
 // Web request line (URL, PARAMs parsed in-line)
-char reqBuff[512];
+static char reqBuff[512];
 
 // HTTP interface
-WiFiServer webSetup(80);
-WiFiServer webIface(80);
+static WiFiServer webSetup(80);
+static WiFiServer webIface(80);
 
-
-
-
-
-
-static const char *hex="0123456789ABCDEF";
-
-void DefaultSSID(char *ssid)
-{
-  byte mac[6];
-  WiFi.macAddress(mac);
-  sprintf(ssid, "WIFIPLUG-%02X%02X%02X", mac[3], mac[4], mac[5]);
-}
-
-
-
-
-char *hx(byte p)
-{
-  static char a[3];
-  a[0] = hex[(p>>4)&15];
-  a[1] = hex[(p)&15];
-  a[2] = 0;
-  return a;
-}
-
-void SerHex(void *pv, int len)
-{
-  byte *p = (byte*)pv;
-  while (len--) Serial.print(hx(*(p++)));
-  Serial.println("");
-}
 
 // Return a *static* char * to an IP formatted string, so DO NOT USE MORE THAN ONCE PER LINE
 const char *PrintIP(const byte ip[4])
@@ -98,11 +62,13 @@ const char *PrintIP(const byte ip[4])
   return str;
 }
 
-inline const char *PrintBool(bool b) { return b ? "True" : "False"; }
+const char *PrintBool(bool b)
+{
+  return b ? "True" : "False";
+}
 
 void PrintSettings(WiFiClient *client)
 {
-  
   WebPrintf(client, "Version: %d<br>\n", settings.version);
   
   WebPrintf(client, "<br><h1>WiFi Network</h1>\n");
@@ -116,7 +82,7 @@ void PrintSettings(WiFiClient *client)
     WebPrintf(client, "Netmask: %s<br>\n", PrintIP(settings.netmask));
     WebPrintf(client, "DNS: %s<br>\n", PrintIP(settings.dns));
   }
-  WebPrintf(client, "UDP Log Server: %s:9911 (nc -l -u 911)<br>\n", PrintIP(settings.logsvr));
+  WebPrintf(client, "UDP Log Server: %s:9911 (nc -l -u 9911)<br>\n", PrintIP(settings.logsvr));
   
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
   WebPrintf(client, "NTP: %s<br>\n", settings.ntp);
@@ -143,7 +109,7 @@ void PrintSettings(WiFiClient *client)
 void WebError(WiFiClient *client, const char *ret, const char *headers, const char *body)
 {
   WebPrintf(client, "HTTP/1.1 %s\r\n", ret);
-  WebPrintf(client, "Server: WIFIPlug\r\n");
+  WebPrintf(client, "Server: PsychoPlug\r\n");
   //fprintf(fp, "Content-length: %d\r\n", strlen(errorPage));
   WebPrintf(client, "Content-type: text/html\r\n");
   WebPrintf(client, "Cache-Control: no-cache, no-store, must-revalidate\r\n");
@@ -159,7 +125,7 @@ void WebError(WiFiClient *client, const char *ret, const char *headers, const ch
 void WebHeaders(WiFiClient *client, const char *headers)
 {
   WebPrintf(client, "HTTP/1.1 200 OK\r\n");
-  WebPrintf(client, "Server: WIFIPlug\r\n");
+  WebPrintf(client, "Server: PsychoPlug\r\n");
   WebPrintf(client, "Content-type: text/html\r\n");
   WebPrintf(client, "Cache-Control: no-cache, no-store, must-revalidate\r\n");
   WebPrintf(client, "Pragma: no-cache\r\n");
@@ -173,20 +139,22 @@ void WebHeaders(WiFiClient *client, const char *headers)
 void StartSetupAP()
 {
   char ssid[16];
+  byte mac[6];
 
-  Serial.print("Starting Setup AP Mode\n");
+  Log("Starting Setup AP Mode\n");
 
   isSetup = false;
-  DefaultSSID(ssid);
+  WiFi.macAddress(mac);
+  sprintf(ssid, "PSYCHOPLUG-%02X%02X%02X", mac[3], mac[4], mac[5]);
   WiFi.softAP(ssid);
 
-  Serial.print("Waiting for connection\n");
+  Log("Waiting for connection\n");
   webSetup.begin();
 }
 
 void StartSTA()
 {
-  Serial.print("Starting STA Mode\n");
+  Log("Starting STA Mode\n");
   if (settings.hostname[0]) WiFi.hostname(settings.hostname);
   if (!settings.useDHCP) {
     WiFi.config(settings.ip, settings.gateway, settings.netmask, settings.dns);
@@ -197,15 +165,15 @@ void StartSTA()
   if (settings.psk[0]) WiFi.begin(settings.ssid, settings.psk);
   else WiFi.begin(settings.ssid);
 
-  // Try for 15 seconds, then revert to config
-  int timeout=15000;
-  while (( timeout--) && (WiFi.status() != WL_CONNECTED) ) {
+  // Try forever.  
+  while (WiFi.status() != WL_CONNECTED) {
     ManageLED(LED_CONNECTING);
+    ManageButton();
     delay(1);
   }
   
   if (WiFi.status() != WL_CONNECTED) {
-    StartSetupAP();
+    Reset(); // Punt, maybe we're in a weird way.  Reboot and try it again
   } else {
     // Start standard interface
     webIface.begin();
@@ -213,7 +181,6 @@ void StartSTA()
   }
 
   StartLog();
-  LogSettings();
   StartMQTT();
 }
 
@@ -323,7 +290,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     bool matchUser = !strcmp(user, settings.uiUser);
     bool matchPass = VerifyPassword(pass);
     if (!authBuff[0] || !matchUser || !matchPass) {
-      WebError(client, "401 Unauthorized", "WWW-Authenticate: Basic realm=\"WIFIPlug\"\r\n", "Login required.");
+      WebError(client, "401 Unauthorized", "WWW-Authenticate: Basic realm=\"PsychoPlug\"\r\n", "Login required.");
       return false;
     }
   }
@@ -436,8 +403,8 @@ void WebFormCheckboxDisabler(WiFiClient *client, const char *label, const char *
 void SendSetupHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>WIFIPlug Setup</title></head>\n");
-  WebPrintf(client, "<body><h1>WIFIPlug Setup</h1>\n");
+  WebPrintf(client, "<html><head><title>PsychoPlug Setup</title></head>\n");
+  WebPrintf(client, "<body><h1>PsychoPlug Setup</h1>\n");
   WebPrintf(client, "<form action=\"config.html\" method=\"POST\">\n");
 
   WebPrintf(client, "<br><h1>WiFi Network</h1>\n");
@@ -472,10 +439,8 @@ void SendSetupHTML(WiFiClient *client)
   WebFormText(client, "Topic", "mqtttopic", settings.mqttTopic, settings.mqttEnable);
 
   WebPrintf(client, "<br><h1>Web UI</h1>\n");
-  const char *ary3[] = { "uiuser", "uipass", "uihttps", "" };
-  WebFormCheckboxDisabler(client, "Enable Web UI", "uienable", true, settings.uiEnable, true, ary3 );
-  WebFormText(client, "Admin User", "uiuser", settings.uiUser, settings.uiEnable);
-  WebFormText(client, "Admin Password", "uipass", "*****", settings.uiEnable);
+  WebFormText(client, "Admin User", "uiuser", settings.uiUser, true);
+  WebFormText(client, "Admin Password", "uipass", "*****", true);
 
   WebPrintf(client, "<input type=\"submit\" value=\"Submit\">\n");
   WebPrintf(client, "</form></body></html>\n");
@@ -491,7 +456,7 @@ void SendStatusHTML(WiFiClient *client)
   time_t t = now();
   
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>WIFIPlug Status</title></head>\n");
+  WebPrintf(client, "<html><head><title>PsychoPlug Status</title></head>\n");
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Current Time: %d:%02d:%02d %d/%d/%d<br>\n", hour(t), minute(t), second(t), month(t), day(t), year(t));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
@@ -517,7 +482,7 @@ void SendStatusHTML(WiFiClient *client)
 void SendEditHTML(WiFiClient *client, int id)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>WIFIPlug Rule Edit</title></head>\n");
+  WebPrintf(client, "<html><head><titlePsychoPlug Rule Edit</title></head>\n");
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "<h1>Editing rule %d</h1>\n", id+1);
 
@@ -559,17 +524,16 @@ void SendSuccessHTML(WiFiClient *client)
 void setup()
 {
   Serial.begin(9600);
-  Serial.print("Starting up...\n");
-  delay(1000);
+  Log("Starting up...\n");
+  delay(100);
 
   StartRelay();
   StartButton();
   StartLED();
   StartPowerMonitor();
-  
   delay(1);
-  Serial.print("Loading Settings\n");
-  Serial.flush();
+  
+  Log("Loading Settings\n");
   
   bool ok = LoadSettings(RawButton());
   SetRelay(settings.onAfterPFail?true:false); 
@@ -582,7 +546,7 @@ void setup()
     StartSetupAP();
   }
 
-  Serial.print("End setup()\n");
+  Log("End setup()\n");
 }
 
 
@@ -627,8 +591,9 @@ void ParseSetupForm(char *params)
   
   // Checkboxes don't actually return values if they're unchecked, so by default these get false
   settings.useDHCP = false;
+  settings.onAfterPFail = false;
   settings.mqttEnable = false;
-  settings.uiEnable = false;
+  settings.mqttSSL = false;
   
   while (ParseParam(&params, &namePtr, &valPtr)) {
     ParamText("ssid", settings.ssid);
@@ -659,7 +624,6 @@ void ParseSetupForm(char *params)
     ParamText("mqttuser", settings.mqttUser);
     ParamText("mqttpass", settings.mqttPass);
 
-    ParamCheckbox("uienable", settings.uiEnable);
     ParamText("uiuser", settings.uiUser);
     char tempPass[64];
     ParamText("uipass", tempPass);
@@ -669,7 +633,6 @@ void ParseSetupForm(char *params)
     }
     memset(tempPass, 0, sizeof(tempPass)); // I think I'm paranoid
   }
-  LogSettings();
 }
 
 void SendRebootHTML(WiFiClient *client)
@@ -680,18 +643,17 @@ void SendRebootHTML(WiFiClient *client)
   WebPrintf(client, "<br>\n");
   PrintSettings(client);
   if (isSetup) WebPrintf(client, "<hr><h1><a href=\"index.html\">Click here to reconnect after 5 seconds.</a></h1>\n")
-  else WebPrintf(client, "<br><h1>WIFIPlug will now reboot and connect to given network</h1>");
+  else WebPrintf(client, "<br><h1>PsychoPlug will now reboot and connect to given network</h1>");
   WebPrintf(client, "</body>");
 }
 
 void SendResetHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>Resetting WIFIPlug</title></head><body>\n");
+  WebPrintf(client, "<html><head><title>Resetting PsychoPlug</title></head><body>\n");
   WebPrintf(client, "<h1>Resetting the plug, please manually reconnect in 5 seconds.</h1>");
   WebPrintf(client, "</body>");
 }
-
 
 void Reset()
 {
@@ -732,7 +694,6 @@ void loop()
         WiFi.mode(WIFI_OFF);
         delay(500);
         Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
-        //StartSTA();
       } else {
         WebError(&client, "404", NULL, "Not Found");
       }
@@ -832,15 +793,10 @@ void loop()
         WiFi.mode(WIFI_OFF);
         delay(500);
         Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
-        //StartSTA();
       } else {
         WebError(&client, "404", NULL, "Not Found");
       }
     }
   }
 }
-
-
-
-
 

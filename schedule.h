@@ -1,5 +1,5 @@
 /*
-  Psychoplug
+  PsychoPlug
   ESP8266 based remote outlet with standalone timer and MQTT integration
   
   Copyright (C) 2017  Earle F. Philhower, III
@@ -32,9 +32,6 @@ typedef struct {
   byte minute;
   byte action;
 } Event;
-
-
-
 
 #define ACTION_NONE     (0)
 #define ACTION_ON       (1)

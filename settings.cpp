@@ -1,5 +1,5 @@
 /*
-  Psychoplug
+  PsychoPlug
   ESP8266 based remote outlet with standalone timer and MQTT integration
   
   Copyright (C) 2017  Earle F. Philhower, III
@@ -22,6 +22,7 @@
 #include <EEPROM.h>
 #include "settings.h"
 #include "password.h"
+#include "log.h"
 
 static byte CalcSettingsChecksum();
 
@@ -44,8 +45,7 @@ bool LoadSettings(bool reset)
   byte notCalcChk = ~calcChk;
 
   if ((chk != calcChk) || (notChk != notCalcChk) ||(settings.version != SETTINGSVERSION) || (reset)) {
-    Serial.println("Setting checksum mismatch, generating default settings");
-    Serial.flush();
+    Log("Setting checksum mismatch, generating default settings");
     memset(&settings, 0, sizeof(settings));
     settings.version = SETTINGSVERSION;
     settings.ssid[0] = 0;
@@ -65,13 +65,10 @@ bool LoadSettings(bool reset)
     settings.onAfterPFail = false;
     settings.voltage = 120;
     settings.mqttEnable = false;
-    settings.uiEnable = true;
     ok = false;
-    Serial.print("Unable to restore settings from EEPROM\n");
-    Serial.flush();
+    Log("Unable to restore settings from EEPROM\n");
   } else {
-    Serial.print("Settings restored from EEPROM\n");
-    Serial.flush();
+    Log("Settings restored from EEPROM\n");
     ok = true;
   }
   EEPROM.end();

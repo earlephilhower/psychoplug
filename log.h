@@ -1,5 +1,5 @@
 /*
-  Psychoplug
+  PsychoPlug
   ESP8266 based remote outlet with standalone timer and MQTT integration
   
   Copyright (C) 2017  Earle F. Philhower, III
@@ -30,8 +30,5 @@ extern void Log(const char *str);
 
 // Ease-of-use to send formatted output
 #define LogPrintf(fmt, ...) { char buff[256]; snprintf(buff, sizeof(buff), fmt, ## __VA_ARGS__); Log(buff); }
-
-// Dump settings to the log
-extern void LogSettings();
 
 #endif
