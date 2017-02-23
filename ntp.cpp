@@ -69,12 +69,13 @@ static time_t GetNTPTime()
       secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
       secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
       secsSince1900 |= (unsigned long)packetBuffer[43];
-      return secsSince1900 - 2208988800UL + settings.utc * SECS_PER_HOUR;
+      return secsSince1900 - 2208988800UL /*70 years*/;
     } else
       delay(1);
   }
   return 0; // return 0 if unable to get the time
 }
+
 
 // send an NTP request to the time server at the given address
 static void SendNTPPacket(IPAddress &address)
@@ -98,4 +99,8 @@ static void SendNTPPacket(IPAddress &address)
   ntpUDP.write(packetBuffer, NTP_PACKET_SIZE);
   ntpUDP.endPacket();
 }
+
+
+
+
 

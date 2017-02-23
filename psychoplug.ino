@@ -519,6 +519,9 @@ void SendSuccessHTML(WiFiClient *client)
   WebPrintf(client, "<html><head><title>Success</title></head><body><h1><a href=\"index.html\">Success.  Click here if not auto-refreshed</a></h1></body></html>\n");
 }
 
+time_t LocalTime(time_t whenUTC);
+bool SetTZ(const char *tzName);
+
 void setup()
 {
   Serial.begin(9600);
@@ -543,6 +546,8 @@ void setup()
     isSetup = false;
     StartSetupAP();
   }
+
+  
 
   Log("End setup()\n");
 }
@@ -655,12 +660,20 @@ void SendResetHTML(WiFiClient *client)
 
 void Reset()
 {
-  // Will hand if you just did serial upload.  Needs powercycle once after upload to function properly.
+  // Will hang if you just did serial upload.  Needs powercycle once after upload to function properly.
   ESP.restart();
 }
 
 void loop()
 {
+  static bool settz = false;
+  if (!settz) {
+    settz = true;
+    SetTZ("America/Los_Angeles");
+  }
+    time_t lcl = LocalTime(now());
+    Serial.printf("Current Time: %d:%02d:%02d %d/%d/%d<br>\n", hour(lcl), minute(lcl), second(lcl), month(lcl), day(lcl), year(lcl));
+  
   // Let the button toggle the relay always
   ManageButton();
 
@@ -706,7 +719,6 @@ void loop()
     WiFiClient client = webIface.available();
     if (!client) return;
 
-    // All pages lead to the one
     if (WebReadRequest(&client, &url, &params, true)) {
       if (IsIndexHTML(url)) {
         SendStatusHTML(&client);
