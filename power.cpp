@@ -48,9 +48,10 @@ void StartPowerMonitor()
 
 void ManagePowerMonitor()
 {
-  static unsigned int lastReadMS = 0;
-  static int delta = millis() - lastReadMS;
-  if (delta > 0x7fffffff) delta = ~delta + 1; // Account for rollover where millis ~= 0 and lastread ~= MAXINT
+  static unsigned long lastReadMS = 0;
+  unsigned long ms = millis();
+  if (ms < lastReadMS) lastReadMS = ms; // Overflow skip one reading
+  unsigned long delta = ms - lastReadMS;
   if (delta > 10000) {
     lastReadMS = millis();
     ReadPowerMonitor();
