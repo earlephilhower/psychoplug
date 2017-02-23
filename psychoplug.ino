@@ -153,7 +153,10 @@ void StartSetupAP()
 void StartSTA()
 {
   Log("Starting STA Mode\n");
-  if (settings.hostname[0]) WiFi.hostname(settings.hostname);
+  
+  if (settings.hostname[0])
+    WiFi.hostname(settings.hostname);
+  
   if (!settings.useDHCP) {
     WiFi.config(settings.ip, settings.gateway, settings.netmask, settings.dns);
   } else {
@@ -558,7 +561,9 @@ void SendEditHTML(WiFiClient *client, int id)
   }
   WebPrintf(client, "</select>:<select name=\"mn\">");
   for (int j=0; j<60; j++) WebPrintf(client, "<option %s>%02d</option>", (settings.event[id].minute==j)?"selected":"", j);
-  WebPrintf(client, "</select> <select name=\"ampm\"><option %s>AM</option><option %s>PM</option></select></td>", settings.event[id].hour<12?"selected":"", settings.event[id].hour>=12?"selected":"");
+  WebPrintf(client, "</select> ");
+  if (settings.use12hr)
+    WebPrintf(client, "<select name=\"ampm\"><option %s>AM</option><option %s>PM</option></select></td>", settings.event[id].hour<12?"selected":"", settings.event[id].hour>=12?"selected":"");
   WebPrintf(client, "<td>\n<select name=\"action\">");
   for (int j=0; j<=ACTION_MAX; j++) WebPrintf(client, "<option %s>%s</option>", settings.event[id].action==j?"selected":"", actionString[j]);
   WebPrintf(client, "</select></td></table><br>\n");
