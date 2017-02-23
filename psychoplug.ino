@@ -403,7 +403,7 @@ void WebFormCheckboxDisabler(WiFiClient *client, const char *label, const char *
   WebPrintf(client, "\" %s %s> %s<br>\n", checked?"checked":"", !enabled?"disabled":"", label);
 }
 
-
+// We do the sort in the browser because it has more memory than us. :(
 void WebTimezonePicker(WiFiClient *client)
 {
   bool reset = true;
@@ -416,7 +416,7 @@ void WebTimezonePicker(WiFiClient *client)
   WebPrintf(client, "</select><br>\n");
 
   WebPrintf(client, "<script type=\"text/javascript\">\n");
-  WebPrintf(client, "function sortSelect(selElem, optname) { \n");
+  WebPrintf(client, "function sortSelect(selElem) { \n");
   WebPrintf(client, "  var tmpAry = new Array();\n");
   WebPrintf(client, "  for (var i=0;i<selElem.options.length;i++) {\n");
   WebPrintf(client, "      tmpAry[i] = new Array();\n");
@@ -430,13 +430,17 @@ void WebTimezonePicker(WiFiClient *client)
   WebPrintf(client, "  var toSel = 2;\n");
   WebPrintf(client, "  for (var i=0;i<tmpAry.length;i++) {\n");
   WebPrintf(client, "      var op = new Option(tmpAry[i][0], tmpAry[i][1]);\n");
-  WebPrintf(client, "      if (tmpAry[i][1] == optName) { toSel = i; }\n");
   WebPrintf(client, "      selElem.options[i] = op;\n");
   WebPrintf(client, "  }\n");
-  WebPrintf(client, "  selElem.selected = toSel;\n");
   WebPrintf(client, "  return;\n");
   WebPrintf(client, "}\n");
-  WebPrintf(client, "sortSelect(document.getElementById('timezone'), %s);\n", settings.timezone);
+  WebPrintf(client, "sortSelect(document.getElementById('timezone'));\n");
+  WebPrintf(client, "function selectItemByValue(elmnt, value) {\n");
+  WebPrintf(client, "  for(var i=0; i < elmnt.options.length; i++) {\n");
+  WebPrintf(client, "    if(elmnt.options[i].value === value) { elmnt.selectedIndex = i; break; }\n");
+  WebPrintf(client, "  }\n");
+  WebPrintf(client, "}\n");
+  WebPrintf(client, "setTimeout(function(){selectItemByValue(document.getElementById('timezone'), '%s');}, 500);\n", settings.timezone );
   WebPrintf(client, "</script>\n");
 
 }
