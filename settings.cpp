@@ -59,9 +59,11 @@ bool LoadSettings(bool reset)
     memset(settings.logsvr, 0, 4);
     strcpy(settings.ntp, "us.pool.ntp.org");
     strcpy(settings.uiUser, "admin");
+    strcpy(settings.timezone, "America/Los_Angeles");
+    settings.use12hr = true;
+    settings.usedmy = false;
     HashPassword("admin"); // This will set settings.uiPassEnc
     memset(settings.logsvr, 0, 4); 
-    settings.utc =-8;
     settings.onAfterPFail = false;
     settings.voltage = 120;
     settings.mqttEnable = false;

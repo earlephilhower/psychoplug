@@ -36,7 +36,7 @@
 #include "password.h"
 #include "relay.h"
 #include "led.h"
-
+#include "timezone.h"
 
 bool isSetup = false;
 Settings settings;
@@ -67,6 +67,8 @@ const char *PrintBool(bool b)
   return b ? "True" : "False";
 }
 
+const char *encoding = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/>\n";
+
 void PrintSettings(WiFiClient *client)
 {
   WebPrintf(client, "Version: %d<br>\n", settings.version);
@@ -86,8 +88,10 @@ void PrintSettings(WiFiClient *client)
   
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
   WebPrintf(client, "NTP: %s<br>\n", settings.ntp);
-  WebPrintf(client, "UTC Offset: %d<br>\n", settings.utc);
-
+  WebPrintf(client, "Timezone: %s<br>\n", settings.timezone);
+  WebPrintf(client, "12 hour time format: %s<br>\n", PrintBool(settings.use12hr));
+  WebPrintf(client, "DD/MM/YY date format: %s<br>\n", PrintBool(settings.usedmy));
+  
   WebPrintf(client, "<br><h1>Power Settings</h1>\n");
   WebPrintf(client, "System Voltage: %d<br>\n", settings.voltage);
   WebPrintf(client, "On after power failure: %s<br>\n", PrintBool(settings.onAfterPFail));
@@ -116,7 +120,7 @@ void WebError(WiFiClient *client, const char *ret, const char *headers, const ch
   WebPrintf(client, "Pragma: no-cache\r\n");
   WebPrintf(client, "Expires: 0\r\n");
   if (headers) WebPrintf(client, "%s\r\n", headers);
-  WebPrintf(client, "<html><head><title>%s</title></head>\n", ret);
+  WebPrintf(client, "<html><head><title>%s</title>%s</head>\n", ret, encoding);
   WebPrintf(client, "<body><h1>%s</h1><p>%s</p></body></html>\r\n", ret, body);
 }
 
@@ -399,11 +403,49 @@ void WebFormCheckboxDisabler(WiFiClient *client, const char *label, const char *
   WebPrintf(client, "\" %s %s> %s<br>\n", checked?"checked":"", !enabled?"disabled":"", label);
 }
 
+
+void WebTimezonePicker(WiFiClient *client)
+{
+  bool reset = true;
+  WebPrintf(client, "Timezone: <select name=\"timezone\" id=\"timezone\">\n");
+  char str[64];
+  while ( GetNextTZ(reset, str, sizeof(str)) ) {
+      reset = false;
+      WebPrintf(client, "<option value=\"%s\"%s>%s</option>\n", str, !strcmp(str, settings.timezone)?" selected":"", str);
+  }
+  WebPrintf(client, "</select><br>\n");
+
+  WebPrintf(client, "<script type=\"text/javascript\">\n");
+  WebPrintf(client, "function sortSelect(selElem, optname) { \n");
+  WebPrintf(client, "  var tmpAry = new Array();\n");
+  WebPrintf(client, "  for (var i=0;i<selElem.options.length;i++) {\n");
+  WebPrintf(client, "      tmpAry[i] = new Array();\n");
+  WebPrintf(client, "      tmpAry[i][0] = selElem.options[i].text;\n");
+  WebPrintf(client, "      tmpAry[i][1] = selElem.options[i].value;\n");
+  WebPrintf(client, "  }\n");
+  WebPrintf(client, "  tmpAry.sort();\n");
+  WebPrintf(client, "  while (selElem.options.length > 0) {\n");
+  WebPrintf(client, "      selElem.options[0] = null;\n");
+  WebPrintf(client, "  }\n");
+  WebPrintf(client, "  var toSel = 2;\n");
+  WebPrintf(client, "  for (var i=0;i<tmpAry.length;i++) {\n");
+  WebPrintf(client, "      var op = new Option(tmpAry[i][0], tmpAry[i][1]);\n");
+  WebPrintf(client, "      if (tmpAry[i][1] == optName) { toSel = i; }\n");
+  WebPrintf(client, "      selElem.options[i] = op;\n");
+  WebPrintf(client, "  }\n");
+  WebPrintf(client, "  selElem.selected = toSel;\n");
+  WebPrintf(client, "  return;\n");
+  WebPrintf(client, "}\n");
+  WebPrintf(client, "sortSelect(document.getElementById('timezone'), %s);\n", settings.timezone);
+  WebPrintf(client, "</script>\n");
+
+}
+
 // Setup web page
 void SendSetupHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Setup</title></head>\n");
+  WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>%s</head>\n", encoding);
   WebPrintf(client, "<body><h1>PsychoPlug Setup</h1>\n");
   WebPrintf(client, "<form action=\"config.html\" method=\"POST\">\n");
 
@@ -421,7 +463,9 @@ void SendSetupHTML(WiFiClient *client)
   
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
   WebFormText(client, "NTP Server", "ntp", settings.ntp, true);
-  WebFormText(client, "UTC Offset", "utcoffset", settings.utc, true);
+  WebTimezonePicker(client);
+  WebFormCheckbox(client, "12hr Time Format", "use12hr", settings.use12hr, true);
+  WebFormCheckbox(client, "DD/MM/YY Date Format", "usedmy", settings.usedmy, true);
 
   WebPrintf(client, "<br><h1>Power</h1>\n");
   WebFormText(client, "Mains Voltage", "voltage", settings.voltage, true);
@@ -451,12 +495,12 @@ void SendSetupHTML(WiFiClient *client)
 void SendStatusHTML(WiFiClient *client)
 {
   bool curPower = !GetRelay();
-  time_t t = now();
+  char buff[64];
   
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Status</title></head>\n");
+  WebPrintf(client, "<html><head><title>PsychoPlug Status</title>%s</head>\n", encoding);
   WebPrintf(client, "<body>\n");
-  WebPrintf(client, "Current Time: %d:%02d:%02d %d/%d/%d<br>\n", hour(t), minute(t), second(t), month(t), day(t), year(t));
+  WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, buff, sizeof(buff)));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
   WebPrintf(client, "Current: %dmA (%dW @ %dV)<nr>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
 
@@ -480,7 +524,7 @@ void SendStatusHTML(WiFiClient *client)
 void SendEditHTML(WiFiClient *client, int id)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><titlePsychoPlug Rule Edit</title></head>\n");
+  WebPrintf(client, "<html><head><title>PsychoPlug Rule Edit</title>%s</head>\n", encoding);
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "<h1>Editing rule %d</h1>\n", id+1);
 
@@ -516,11 +560,9 @@ void SendEditHTML(WiFiClient *client, int id)
 void SendSuccessHTML(WiFiClient *client)
 {
   WebHeaders(client, "Refresh: 1; url=index.html\r\n");
-  WebPrintf(client, "<html><head><title>Success</title></head><body><h1><a href=\"index.html\">Success.  Click here if not auto-refreshed</a></h1></body></html>\n");
+  WebPrintf(client, "<html><head><title>Success</title>%s</head><body><h1><a href=\"index.html\">Success.  Click here if not auto-refreshed</a></h1></body></html>\n", encoding);
 }
 
-time_t LocalTime(time_t whenUTC);
-bool SetTZ(const char *tzName);
 
 void setup()
 {
@@ -610,7 +652,9 @@ void ParseSetupForm(char *params)
     Param4Int("logsvr", settings.logsvr);
     
     ParamText("ntp", settings.ntp);
-    ParamInt("utcoffset", settings.utc);
+    ParamText("timezone", settings.timezone);
+    ParamCheckbox("use12hr", settings.use12hr);
+    ParamCheckbox("usedmy", settings.usedmy);
 
     ParamCheckbox("onafterpfail", settings.onAfterPFail);
 
@@ -641,7 +685,7 @@ void ParseSetupForm(char *params)
 void SendRebootHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>Setting Configuration</title></head><body>\n");
+  WebPrintf(client, "<html><head><title>Setting Configuration</title>%s</head><body>\n", encoding);
   WebPrintf(client, "<h1>Setting Configuration</h1>");
   WebPrintf(client, "<br>\n");
   PrintSettings(client);
@@ -653,7 +697,7 @@ void SendRebootHTML(WiFiClient *client)
 void SendResetHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>Resetting PsychoPlug</title></head><body>\n");
+  WebPrintf(client, "<html><head><title>Resetting PsychoPlug</title>%s</head><body>\n", encoding);
   WebPrintf(client, "<h1>Resetting the plug, please manually reconnect in 5 seconds.</h1>");
   WebPrintf(client, "</body>");
 }
@@ -666,14 +710,13 @@ void Reset()
 
 void loop()
 {
+  // Want to know current year to set the timezone properly, wait until setup() has completed
   static bool settz = false;
   if (!settz) {
     settz = true;
-    SetTZ("America/Los_Angeles");
+    SetTZ(settings.timezone);
   }
-    time_t lcl = LocalTime(now());
-    Serial.printf("Current Time: %d:%02d:%02d %d/%d/%d<br>\n", hour(lcl), minute(lcl), second(lcl), month(lcl), day(lcl), year(lcl));
-  
+
   // Let the button toggle the relay always
   ManageButton();
 

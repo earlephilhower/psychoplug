@@ -10,58 +10,58 @@
 #define MON_OCT (9)
 #define MON_NOV (10)
 #define MON_DEC (11)
-#define FRI_GTEQ (0)
-#define MON_GTEQ (1)
-#define MON_LAST (2)
-#define WED_LAST (3)
-#define SAT_GTEQ (4)
-#define SUN_GTEQ (5)
-#define SUN_LAST (6)
-#define THU_GTEQ (7)
-#define THU_LAST (8)
-#define WED_GTEQ (9)
-#define SAT_LAST (10)
-#define TUE_GTEQ (11)
-#define GIVEN_DAY (12)
-#define TUE_LAST (13)
-#define FRI_LAST (14)
+#define MON_GTEQ (0)
+#define FRI_GTEQ (1)
+#define WED_GTEQ (2)
+#define TUE_LAST (3)
+#define MON_LAST (4)
+#define SAT_GTEQ (5)
+#define SUN_GTEQ (6)
+#define SAT_LAST (7)
+#define GIVEN_DAY (8)
+#define SUN_LAST (9)
+#define FRI_LAST (10)
+#define THU_LAST (11)
+#define TUE_GTEQ (12)
+#define THU_GTEQ (13)
+#define WED_LAST (14)
 #define ATREF_U (0)
-#define ATREF_S (1)
-#define ATREF_W (2)
-#define RULE_Zion (0)
-#define RULE_Palestine (1)
-#define RULE_Chatham (2)
-#define RULE_LH (3)
-#define RULE_Morocco (4)
-#define RULE_Moldova (5)
+#define ATREF_W (1)
+#define ATREF_S (2)
+#define RULE_Thule (0)
+#define RULE_E_EurAsia (1)
+#define RULE_EU (2)
+#define RULE_Palestine (3)
+#define RULE_Syria (4)
+#define RULE_Troll (5)
 #define RULE_Cuba (6)
-#define RULE_Tonga (7)
-#define RULE_Troll (8)
-#define RULE_Fiji (9)
-#define RULE_Chile (10)
-#define RULE_AN (11)
-#define RULE_Lebanon (12)
+#define RULE_LH (7)
+#define RULE_NONE (8)
+#define RULE_Moldova (9)
+#define RULE_Chatham (10)
+#define RULE_Brazil (11)
+#define RULE_Zion (12)
 #define RULE_AV (13)
-#define RULE_Mexico (14)
-#define RULE_NONE (15)
-#define RULE_Syria (16)
-#define RULE_EU (17)
-#define RULE_Brazil (18)
+#define RULE_Para (14)
+#define RULE_AS (15)
+#define RULE_EUAsia (16)
+#define RULE_Tonga (17)
+#define RULE_Jordan (18)
 #define RULE_C_Eur (19)
-#define RULE_Para (20)
-#define RULE_WS (21)
-#define RULE_Thule (22)
+#define RULE_Lebanon (20)
+#define RULE_AT (21)
+#define RULE_Fiji (22)
 #define RULE_NZ (23)
-#define RULE_Jordan (24)
-#define RULE_E_EurAsia (25)
-#define RULE_AS (26)
-#define RULE_AT (27)
-#define RULE_Namibia (28)
-#define RULE_Canada (29)
-#define RULE_US (30)
-#define RULE_EUAsia (31)
-#define RULE_W_Eur (32)
-#define RULE_E_Eur (33)
+#define RULE_US (24)
+#define RULE_E_Eur (25)
+#define RULE_Chile (26)
+#define RULE_Namibia (27)
+#define RULE_WS (28)
+#define RULE_Mexico (29)
+#define RULE_W_Eur (30)
+#define RULE_Morocco (31)
+#define RULE_AN (32)
+#define RULE_Canada (33)
 
 typedef struct {
        uint8_t name       : 6; // Empirical
@@ -153,13 +153,13 @@ typedef struct {
 
 static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {0, /*Africa/Abidjan*/ "Africa/Abidjan", 0, 0, RULE_NONE, "GMT"},
-{8, /*Africa/Accra*/ "ccra", 0, 0, RULE_NONE, ""},
+{8, /*Africa/Accra*/ "ccra", 0, 0, RULE_NONE, "%s"},
 {8, /*Africa/Algiers*/ "lgiers", 1, 0, RULE_NONE, "CET"},
 {7, /*Africa/Bissau*/ "Bissau", 0, 0, RULE_NONE, "GMT"},
-{7, /*Africa/Cairo*/ "Cairo", 2, 0, RULE_NONE, "EET"},
-{9, /*Africa/Casablanca*/ "sablanca", 0, 0, RULE_Morocco, "WET"},
-{8, /*Africa/Ceuta*/ "euta", 1, 0, RULE_EU, "CET"},
-{7, /*Africa/El_Aaiun*/ "El_Aaiun", 0, 0, RULE_Morocco, "WET"},
+{7, /*Africa/Cairo*/ "Cairo", 2, 0, RULE_NONE, "EE%sT"},
+{9, /*Africa/Casablanca*/ "sablanca", 0, 0, RULE_Morocco, "WE%sT"},
+{8, /*Africa/Ceuta*/ "euta", 1, 0, RULE_EU, "CE%sT"},
+{7, /*Africa/El_Aaiun*/ "El_Aaiun", 0, 0, RULE_Morocco, "WE%sT"},
 {7, /*Africa/Johannesburg*/ "Johannesburg", 2, 0, RULE_NONE, "SAST"},
 {7, /*Africa/Khartoum*/ "Khartoum", 3, 0, RULE_NONE, "EAT"},
 {7, /*Africa/Lagos*/ "Lagos", 1, 0, RULE_NONE, "WAT"},
@@ -168,10 +168,10 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {7, /*Africa/Nairobi*/ "Nairobi", 3, 0, RULE_NONE, "EAT"},
 {8, /*Africa/Ndjamena*/ "djamena", 1, 0, RULE_NONE, "WAT"},
 {7, /*Africa/Tripoli*/ "Tripoli", 2, 0, RULE_NONE, "EET"},
-{8, /*Africa/Tunis*/ "unis", 1, 0, RULE_NONE, "CET"},
-{7, /*Africa/Windhoek*/ "Windhoek", 1, 0, RULE_Namibia, "WAT"},
-{1, /*America/Adak*/ "merica/Adak", -10, 0, RULE_US, "HT"},
-{9, /*America/Anchorage*/ "nchorage", -9, 0, RULE_US, "AKT"},
+{8, /*Africa/Tunis*/ "unis", 1, 0, RULE_NONE, "CE%sT"},
+{7, /*Africa/Windhoek*/ "Windhoek", 1, 0, RULE_Namibia, "WA%sT"},
+{1, /*America/Adak*/ "merica/Adak", -10, 0, RULE_US, "H%sT"},
+{9, /*America/Anchorage*/ "nchorage", -9, 0, RULE_US, "AK%sT"},
 {9, /*America/Araguaina*/ "raguaina", -3, 0, RULE_NONE, "-03"},
 {10, /*America/Argentina/Buenos_Aires*/ "gentina/Buenos_Aires", -3, 0, RULE_NONE, "-03/-02"},
 {18, /*America/Argentina/Catamarca*/ "Catamarca", -3, 0, RULE_NONE, "-03"},
@@ -188,118 +188,118 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {9, /*America/Asuncion*/ "suncion", -4, 0, RULE_Para, "-04/-03"},
 {9, /*America/Atikokan*/ "tikokan", -5, 0, RULE_NONE, "EST"},
 {8, /*America/Bahia*/ "Bahia", -3, 0, RULE_NONE, "-03"},
-{13, /*America/Bahia_Banderas*/ "_Banderas", -6, 0, RULE_Mexico, "CT"},
-{10, /*America/Barbados*/ "rbados", -4, 0, RULE_NONE, "AT"},
+{13, /*America/Bahia_Banderas*/ "_Banderas", -6, 0, RULE_Mexico, "C%sT"},
+{10, /*America/Barbados*/ "rbados", -4, 0, RULE_NONE, "A%sT"},
 {9, /*America/Belem*/ "elem", -3, 0, RULE_NONE, "-03"},
-{11, /*America/Belize*/ "ize", -6, 0, RULE_NONE, ""},
+{11, /*America/Belize*/ "ize", -6, 0, RULE_NONE, "%s"},
 {9, /*America/Blanc-Sablon*/ "lanc-Sablon", -4, 0, RULE_NONE, "AST"},
 {9, /*America/Boa_Vista*/ "oa_Vista", -4, 0, RULE_NONE, "-04"},
 {10, /*America/Bogota*/ "gota", -5, 0, RULE_NONE, "-05/-04"},
-{10, /*America/Boise*/ "ise", -7, 0, RULE_US, "MT"},
-{8, /*America/Cambridge_Bay*/ "Cambridge_Bay", -7, 0, RULE_Canada, "MT"},
+{10, /*America/Boise*/ "ise", -7, 0, RULE_US, "M%sT"},
+{8, /*America/Cambridge_Bay*/ "Cambridge_Bay", -7, 0, RULE_Canada, "M%sT"},
 {11, /*America/Campo_Grande*/ "po_Grande", -4, 0, RULE_Brazil, "-04/-03"},
 {10, /*America/Cancun*/ "ncun", -5, 0, RULE_NONE, "EST"},
 {10, /*America/Caracas*/ "racas", -4, 0, RULE_NONE, "-04"},
 {10, /*America/Cayenne*/ "yenne", -3, 0, RULE_NONE, "-03"},
-{9, /*America/Chicago*/ "hicago", -6, 0, RULE_US, "CT"},
-{11, /*America/Chihuahua*/ "huahua", -7, 0, RULE_Mexico, "MT"},
-{9, /*America/Costa_Rica*/ "osta_Rica", -6, 0, RULE_NONE, "CT"},
+{9, /*America/Chicago*/ "hicago", -6, 0, RULE_US, "C%sT"},
+{11, /*America/Chihuahua*/ "huahua", -7, 0, RULE_Mexico, "M%sT"},
+{9, /*America/Costa_Rica*/ "osta_Rica", -6, 0, RULE_NONE, "C%sT"},
 {9, /*America/Creston*/ "reston", -7, 0, RULE_NONE, "MST"},
 {9, /*America/Cuiaba*/ "uiaba", -4, 0, RULE_Brazil, "-04/-03"},
 {10, /*America/Curacao*/ "racao", -4, 0, RULE_NONE, "AST"},
 {8, /*America/Danmarkshavn*/ "Danmarkshavn", 0, 0, RULE_NONE, "GMT"},
-{10, /*America/Dawson*/ "wson", -8, 0, RULE_Canada, "PT"},
+{10, /*America/Dawson*/ "wson", -8, 0, RULE_Canada, "P%sT"},
 {14, /*America/Dawson_Creek*/ "_Creek", -7, 0, RULE_NONE, "MST"},
-{9, /*America/Denver*/ "enver", -7, 0, RULE_US, "MT"},
-{10, /*America/Detroit*/ "troit", -5, 0, RULE_US, "ET"},
-{8, /*America/Edmonton*/ "Edmonton", -7, 0, RULE_Canada, "MT"},
+{9, /*America/Denver*/ "enver", -7, 0, RULE_US, "M%sT"},
+{10, /*America/Detroit*/ "troit", -5, 0, RULE_US, "E%sT"},
+{8, /*America/Edmonton*/ "Edmonton", -7, 0, RULE_Canada, "M%sT"},
 {9, /*America/Eirunepe*/ "irunepe", -5, 0, RULE_NONE, "-05"},
-{9, /*America/El_Salvador*/ "l_Salvador", -6, 0, RULE_NONE, "CT"},
+{9, /*America/El_Salvador*/ "l_Salvador", -6, 0, RULE_NONE, "C%sT"},
 {8, /*America/Fort_Nelson*/ "Fort_Nelson", -7, 0, RULE_NONE, "MST"},
 {12, /*America/Fortaleza*/ "aleza", -3, 0, RULE_NONE, "-03"},
-{8, /*America/Glace_Bay*/ "Glace_Bay", -4, 0, RULE_Canada, "AT"},
+{8, /*America/Glace_Bay*/ "Glace_Bay", -4, 0, RULE_Canada, "A%sT"},
 {9, /*America/Godthab*/ "odthab", -3, 0, RULE_EU, "-03/-02"},
-{10, /*America/Goose_Bay*/ "ose_Bay", -4, 0, RULE_Canada, "AT"},
+{10, /*America/Goose_Bay*/ "ose_Bay", -4, 0, RULE_Canada, "A%sT"},
 {9, /*America/Grand_Turk*/ "rand_Turk", -4, 0, RULE_NONE, "AST"},
-{9, /*America/Guatemala*/ "uatemala", -6, 0, RULE_NONE, "CT"},
+{9, /*America/Guatemala*/ "uatemala", -6, 0, RULE_NONE, "C%sT"},
 {11, /*America/Guayaquil*/ "yaquil", -5, 0, RULE_NONE, "-05/-04"},
 {10, /*America/Guyana*/ "yana", -4, 0, RULE_NONE, "-04"},
-{8, /*America/Halifax*/ "Halifax", -4, 0, RULE_Canada, "AT"},
-{10, /*America/Havana*/ "vana", -5, 0, RULE_Cuba, "CT"},
+{8, /*America/Halifax*/ "Halifax", -4, 0, RULE_Canada, "A%sT"},
+{10, /*America/Havana*/ "vana", -5, 0, RULE_Cuba, "C%sT"},
 {9, /*America/Hermosillo*/ "ermosillo", -7, 0, RULE_NONE, "MST"},
-{8, /*America/Indiana/Indianapolis*/ "Indiana/Indianapolis", -5, 0, RULE_US, "ET"},
-{16, /*America/Indiana/Knox*/ "Knox", -6, 0, RULE_US, "CT"},
-{16, /*America/Indiana/Marengo*/ "Marengo", -5, 0, RULE_US, "ET"},
-{16, /*America/Indiana/Petersburg*/ "Petersburg", -5, 0, RULE_US, "ET"},
-{16, /*America/Indiana/Tell_City*/ "Tell_City", -6, 0, RULE_US, "CT"},
-{16, /*America/Indiana/Vevay*/ "Vevay", -5, 0, RULE_US, "ET"},
-{17, /*America/Indiana/Vincennes*/ "incennes", -5, 0, RULE_US, "ET"},
-{16, /*America/Indiana/Winamac*/ "Winamac", -5, 0, RULE_US, "ET"},
-{10, /*America/Inuvik*/ "uvik", -7, 0, RULE_Canada, "MT"},
-{9, /*America/Iqaluit*/ "qaluit", -5, 0, RULE_Canada, "ET"},
+{8, /*America/Indiana/Indianapolis*/ "Indiana/Indianapolis", -5, 0, RULE_US, "E%sT"},
+{16, /*America/Indiana/Knox*/ "Knox", -6, 0, RULE_US, "C%sT"},
+{16, /*America/Indiana/Marengo*/ "Marengo", -5, 0, RULE_US, "E%sT"},
+{16, /*America/Indiana/Petersburg*/ "Petersburg", -5, 0, RULE_US, "E%sT"},
+{16, /*America/Indiana/Tell_City*/ "Tell_City", -6, 0, RULE_US, "C%sT"},
+{16, /*America/Indiana/Vevay*/ "Vevay", -5, 0, RULE_US, "E%sT"},
+{17, /*America/Indiana/Vincennes*/ "incennes", -5, 0, RULE_US, "E%sT"},
+{16, /*America/Indiana/Winamac*/ "Winamac", -5, 0, RULE_US, "E%sT"},
+{10, /*America/Inuvik*/ "uvik", -7, 0, RULE_Canada, "M%sT"},
+{9, /*America/Iqaluit*/ "qaluit", -5, 0, RULE_Canada, "E%sT"},
 {8, /*America/Jamaica*/ "Jamaica", -5, 0, RULE_NONE, "EST"},
-{9, /*America/Juneau*/ "uneau", -9, 0, RULE_US, "AKT"},
-{8, /*America/Kentucky/Louisville*/ "Kentucky/Louisville", -5, 0, RULE_US, "ET"},
-{17, /*America/Kentucky/Monticello*/ "Monticello", -5, 0, RULE_US, "ET"},
+{9, /*America/Juneau*/ "uneau", -9, 0, RULE_US, "AK%sT"},
+{8, /*America/Kentucky/Louisville*/ "Kentucky/Louisville", -5, 0, RULE_US, "E%sT"},
+{17, /*America/Kentucky/Monticello*/ "Monticello", -5, 0, RULE_US, "E%sT"},
 {8, /*America/La_Paz*/ "La_Paz", -4, 0, RULE_NONE, "-04"},
 {9, /*America/Lima*/ "ima", -5, 0, RULE_NONE, "-05/-04"},
-{9, /*America/Los_Angeles*/ "os_Angeles", -8, 0, RULE_US, "PT"},
+{9, /*America/Los_Angeles*/ "os_Angeles", -8, 0, RULE_US, "P%sT"},
 {8, /*America/Maceio*/ "Maceio", -3, 0, RULE_NONE, "-03"},
-{10, /*America/Managua*/ "nagua", -6, 0, RULE_NONE, "CT"},
+{10, /*America/Managua*/ "nagua", -6, 0, RULE_NONE, "C%sT"},
 {12, /*America/Manaus*/ "us", -4, 0, RULE_NONE, "-04"},
 {10, /*America/Martinique*/ "rtinique", -4, 0, RULE_NONE, "AST"},
-{10, /*America/Matamoros*/ "tamoros", -6, 0, RULE_US, "CT"},
-{10, /*America/Mazatlan*/ "zatlan", -7, 0, RULE_Mexico, "MT"},
-{9, /*America/Menominee*/ "enominee", -6, 0, RULE_US, "CT"},
-{10, /*America/Merida*/ "rida", -6, 0, RULE_Mexico, "CT"},
-{10, /*America/Metlakatla*/ "tlakatla", -9, 0, RULE_US, "AKT"},
-{10, /*America/Mexico_City*/ "xico_City", -6, 0, RULE_Mexico, "CT"},
+{10, /*America/Matamoros*/ "tamoros", -6, 0, RULE_US, "C%sT"},
+{10, /*America/Mazatlan*/ "zatlan", -7, 0, RULE_Mexico, "M%sT"},
+{9, /*America/Menominee*/ "enominee", -6, 0, RULE_US, "C%sT"},
+{10, /*America/Merida*/ "rida", -6, 0, RULE_Mexico, "C%sT"},
+{10, /*America/Metlakatla*/ "tlakatla", -9, 0, RULE_US, "AK%sT"},
+{10, /*America/Mexico_City*/ "xico_City", -6, 0, RULE_Mexico, "C%sT"},
 {9, /*America/Miquelon*/ "iquelon", -3, 0, RULE_Canada, "-03/-02"},
-{9, /*America/Moncton*/ "oncton", -4, 0, RULE_Canada, "AT"},
-{11, /*America/Monterrey*/ "terrey", -6, 0, RULE_Mexico, "CT"},
+{9, /*America/Moncton*/ "oncton", -4, 0, RULE_Canada, "A%sT"},
+{11, /*America/Monterrey*/ "terrey", -6, 0, RULE_Mexico, "C%sT"},
 {13, /*America/Montevideo*/ "video", -3, 0, RULE_NONE, "-03/-02"},
-{8, /*America/Nassau*/ "Nassau", -5, 0, RULE_US, "ET"},
-{9, /*America/New_York*/ "ew_York", -5, 0, RULE_US, "ET"},
-{9, /*America/Nipigon*/ "ipigon", -5, 0, RULE_Canada, "ET"},
-{9, /*America/Nome*/ "ome", -9, 0, RULE_US, "AKT"},
+{8, /*America/Nassau*/ "Nassau", -5, 0, RULE_US, "E%sT"},
+{9, /*America/New_York*/ "ew_York", -5, 0, RULE_US, "E%sT"},
+{9, /*America/Nipigon*/ "ipigon", -5, 0, RULE_Canada, "E%sT"},
+{9, /*America/Nome*/ "ome", -9, 0, RULE_US, "AK%sT"},
 {10, /*America/Noronha*/ "ronha", -2, 0, RULE_NONE, "-02"},
-{11, /*America/North_Dakota/Beulah*/ "th_Dakota/Beulah", -6, 0, RULE_US, "CT"},
-{21, /*America/North_Dakota/Center*/ "Center", -6, 0, RULE_US, "CT"},
-{21, /*America/North_Dakota/New_Salem*/ "New_Salem", -6, 0, RULE_US, "CT"},
-{8, /*America/Ojinaga*/ "Ojinaga", -7, 0, RULE_US, "MT"},
+{11, /*America/North_Dakota/Beulah*/ "th_Dakota/Beulah", -6, 0, RULE_US, "C%sT"},
+{21, /*America/North_Dakota/Center*/ "Center", -6, 0, RULE_US, "C%sT"},
+{21, /*America/North_Dakota/New_Salem*/ "New_Salem", -6, 0, RULE_US, "C%sT"},
+{8, /*America/Ojinaga*/ "Ojinaga", -7, 0, RULE_US, "M%sT"},
 {8, /*America/Panama*/ "Panama", -5, 0, RULE_NONE, "EST"},
-{11, /*America/Pangnirtung*/ "gnirtung", -5, 0, RULE_Canada, "ET"},
+{11, /*America/Pangnirtung*/ "gnirtung", -5, 0, RULE_Canada, "E%sT"},
 {10, /*America/Paramaribo*/ "ramaribo", -3, 0, RULE_NONE, "-03"},
 {9, /*America/Phoenix*/ "hoenix", -7, 0, RULE_NONE, "MST"},
-{9, /*America/Port-au-Prince*/ "ort-au-Prince", -5, 0, RULE_NONE, "ET"},
+{9, /*America/Port-au-Prince*/ "ort-au-Prince", -5, 0, RULE_NONE, "E%sT"},
 {12, /*America/Port_of_Spain*/ "_of_Spain", -4, 0, RULE_NONE, "AST"},
 {12, /*America/Porto_Velho*/ "o_Velho", -4, 0, RULE_NONE, "-04"},
 {9, /*America/Puerto_Rico*/ "uerto_Rico", -4, 0, RULE_NONE, "AST"},
 {10, /*America/Punta_Arenas*/ "nta_Arenas", -3, 0, RULE_NONE, "-03"},
-{8, /*America/Rainy_River*/ "Rainy_River", -6, 0, RULE_Canada, "CT"},
-{10, /*America/Rankin_Inlet*/ "nkin_Inlet", -6, 0, RULE_Canada, "CT"},
+{8, /*America/Rainy_River*/ "Rainy_River", -6, 0, RULE_Canada, "C%sT"},
+{10, /*America/Rankin_Inlet*/ "nkin_Inlet", -6, 0, RULE_Canada, "C%sT"},
 {9, /*America/Recife*/ "ecife", -3, 0, RULE_NONE, "-03"},
 {10, /*America/Regina*/ "gina", -6, 0, RULE_NONE, "CST"},
-{10, /*America/Resolute*/ "solute", -6, 0, RULE_Canada, "CT"},
+{10, /*America/Resolute*/ "solute", -6, 0, RULE_Canada, "C%sT"},
 {9, /*America/Rio_Branco*/ "io_Branco", -5, 0, RULE_NONE, "-05"},
 {8, /*America/Santarem*/ "Santarem", -3, 0, RULE_NONE, "-03"},
 {12, /*America/Santiago*/ "iago", -4, 0, RULE_Chile, "-04/-03"},
 {12, /*America/Santo_Domingo*/ "o_Domingo", -4, 0, RULE_NONE, "AST"},
 {10, /*America/Sao_Paulo*/ "o_Paulo", -3, 0, RULE_Brazil, "-03/-02"},
 {9, /*America/Scoresbysund*/ "coresbysund", -1, 0, RULE_EU, "-01/+00"},
-{9, /*America/Sitka*/ "itka", -9, 0, RULE_US, "AKT"},
-{9, /*America/St_Johns*/ "t_Johns", -3, 30, RULE_Canada, "NT"},
+{9, /*America/Sitka*/ "itka", -9, 0, RULE_US, "AK%sT"},
+{9, /*America/St_Johns*/ "t_Johns", -3, 30, RULE_Canada, "N%sT"},
 {9, /*America/Swift_Current*/ "wift_Current", -6, 0, RULE_NONE, "CST"},
-{8, /*America/Tegucigalpa*/ "Tegucigalpa", -6, 0, RULE_NONE, "CT"},
-{9, /*America/Thule*/ "hule", -4, 0, RULE_Thule, "AT"},
-{11, /*America/Thunder_Bay*/ "nder_Bay", -5, 0, RULE_Canada, "ET"},
-{9, /*America/Tijuana*/ "ijuana", -8, 0, RULE_US, "PT"},
-{9, /*America/Toronto*/ "oronto", -5, 0, RULE_Canada, "ET"},
-{8, /*America/Vancouver*/ "Vancouver", -8, 0, RULE_Canada, "PT"},
-{8, /*America/Whitehorse*/ "Whitehorse", -8, 0, RULE_Canada, "PT"},
-{9, /*America/Winnipeg*/ "innipeg", -6, 0, RULE_Canada, "CT"},
-{8, /*America/Yakutat*/ "Yakutat", -9, 0, RULE_US, "AKT"},
-{9, /*America/Yellowknife*/ "ellowknife", -7, 0, RULE_Canada, "MT"},
+{8, /*America/Tegucigalpa*/ "Tegucigalpa", -6, 0, RULE_NONE, "C%sT"},
+{9, /*America/Thule*/ "hule", -4, 0, RULE_Thule, "A%sT"},
+{11, /*America/Thunder_Bay*/ "nder_Bay", -5, 0, RULE_Canada, "E%sT"},
+{9, /*America/Tijuana*/ "ijuana", -8, 0, RULE_US, "P%sT"},
+{9, /*America/Toronto*/ "oronto", -5, 0, RULE_Canada, "E%sT"},
+{8, /*America/Vancouver*/ "Vancouver", -8, 0, RULE_Canada, "P%sT"},
+{8, /*America/Whitehorse*/ "Whitehorse", -8, 0, RULE_Canada, "P%sT"},
+{9, /*America/Winnipeg*/ "innipeg", -6, 0, RULE_Canada, "C%sT"},
+{8, /*America/Yakutat*/ "Yakutat", -9, 0, RULE_US, "AK%sT"},
+{9, /*America/Yellowknife*/ "ellowknife", -7, 0, RULE_Canada, "M%sT"},
 {1, /*Antarctica/Casey*/ "ntarctica/Casey", 11, 0, RULE_NONE, "+11"},
 {11, /*Antarctica/Davis*/ "Davis", 7, 0, RULE_NONE, "+07"},
 {12, /*Antarctica/DumontDUrville*/ "umontDUrville", 10, 0, RULE_NONE, "+10"},
@@ -308,10 +308,10 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {11, /*Antarctica/Palmer*/ "Palmer", -3, 0, RULE_NONE, "-03"},
 {11, /*Antarctica/Rothera*/ "Rothera", -3, 0, RULE_NONE, "-03"},
 {11, /*Antarctica/Syowa*/ "Syowa", 3, 0, RULE_NONE, "+03"},
-{11, /*Antarctica/Troll*/ "Troll", 0, 0, RULE_Troll, ""},
+{11, /*Antarctica/Troll*/ "Troll", 0, 0, RULE_Troll, "%s"},
 {11, /*Antarctica/Vostok*/ "Vostok", 6, 0, RULE_NONE, "+06"},
 {1, /*Asia/Almaty*/ "sia/Almaty", 6, 0, RULE_NONE, "+06"},
-{6, /*Asia/Amman*/ "mman", 2, 0, RULE_Jordan, "EET"},
+{6, /*Asia/Amman*/ "mman", 2, 0, RULE_Jordan, "EE%sT"},
 {6, /*Asia/Anadyr*/ "nadyr", 12, 0, RULE_NONE, "+12"},
 {6, /*Asia/Aqtau*/ "qtau", 5, 0, RULE_NONE, "+05"},
 {8, /*Asia/Aqtobe*/ "obe", 5, 0, RULE_NONE, "+05"},
@@ -321,41 +321,41 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {7, /*Asia/Baku*/ "ku", 4, 0, RULE_NONE, "+04/+05"},
 {7, /*Asia/Bangkok*/ "ngkok", 7, 0, RULE_NONE, "+07"},
 {7, /*Asia/Barnaul*/ "rnaul", 7, 0, RULE_NONE, "+07"},
-{6, /*Asia/Beirut*/ "eirut", 2, 0, RULE_Lebanon, "EET"},
+{6, /*Asia/Beirut*/ "eirut", 2, 0, RULE_Lebanon, "EE%sT"},
 {6, /*Asia/Bishkek*/ "ishkek", 6, 0, RULE_NONE, "+06"},
 {6, /*Asia/Brunei*/ "runei", 8, 0, RULE_NONE, "+08"},
 {5, /*Asia/Chita*/ "Chita", 9, 0, RULE_NONE, "+09"},
 {7, /*Asia/Choibalsan*/ "oibalsan", 8, 0, RULE_NONE, "+08/+09"},
 {6, /*Asia/Colombo*/ "olombo", 5, 30, RULE_NONE, "+0530"},
-{5, /*Asia/Damascus*/ "Damascus", 2, 0, RULE_Syria, "EET"},
+{5, /*Asia/Damascus*/ "Damascus", 2, 0, RULE_Syria, "EE%sT"},
 {6, /*Asia/Dhaka*/ "haka", 6, 0, RULE_NONE, "+06/+07"},
 {6, /*Asia/Dili*/ "ili", 9, 0, RULE_NONE, "+09"},
 {6, /*Asia/Dubai*/ "ubai", 4, 0, RULE_NONE, "+04"},
 {7, /*Asia/Dushanbe*/ "shanbe", 5, 0, RULE_NONE, "+05"},
 {5, /*Asia/Famagusta*/ "Famagusta", 3, 0, RULE_NONE, "+03"},
-{5, /*Asia/Gaza*/ "Gaza", 2, 0, RULE_Palestine, "EET"},
-{5, /*Asia/Hebron*/ "Hebron", 2, 0, RULE_Palestine, "EET"},
+{5, /*Asia/Gaza*/ "Gaza", 2, 0, RULE_Palestine, "EE%sT"},
+{5, /*Asia/Hebron*/ "Hebron", 2, 0, RULE_Palestine, "EE%sT"},
 {6, /*Asia/Ho_Chi_Minh*/ "o_Chi_Minh", 7, 0, RULE_NONE, "+07"},
-{7, /*Asia/Hong_Kong*/ "ng_Kong", 8, 0, RULE_NONE, "HKT"},
+{7, /*Asia/Hong_Kong*/ "ng_Kong", 8, 0, RULE_NONE, "HK%sT"},
 {7, /*Asia/Hovd*/ "vd", 7, 0, RULE_NONE, "+07/+08"},
 {5, /*Asia/Irkutsk*/ "Irkutsk", 8, 0, RULE_NONE, "+08"},
 {5, /*Asia/Jakarta*/ "Jakarta", 7, 0, RULE_NONE, "WIB"},
 {7, /*Asia/Jayapura*/ "yapura", 9, 0, RULE_NONE, "WIT"},
-{6, /*Asia/Jerusalem*/ "erusalem", 2, 0, RULE_Zion, "IT"},
+{6, /*Asia/Jerusalem*/ "erusalem", 2, 0, RULE_Zion, "I%sT"},
 {5, /*Asia/Kabul*/ "Kabul", 4, 30, RULE_NONE, "+0430"},
 {7, /*Asia/Kamchatka*/ "mchatka", 12, 0, RULE_NONE, "+12"},
-{7, /*Asia/Karachi*/ "rachi", 5, 0, RULE_NONE, "PKT"},
+{7, /*Asia/Karachi*/ "rachi", 5, 0, RULE_NONE, "PK%sT"},
 {7, /*Asia/Kathmandu*/ "thmandu", 5, 45, RULE_NONE, "+0545"},
 {6, /*Asia/Khandyga*/ "handyga", 9, 0, RULE_NONE, "+09"},
 {6, /*Asia/Kolkata*/ "olkata", 5, 30, RULE_NONE, "IST"},
 {6, /*Asia/Krasnoyarsk*/ "rasnoyarsk", 7, 0, RULE_NONE, "+07"},
 {6, /*Asia/Kuala_Lumpur*/ "uala_Lumpur", 8, 0, RULE_NONE, "+08"},
 {7, /*Asia/Kuching*/ "ching", 8, 0, RULE_NONE, "+08"},
-{5, /*Asia/Macau*/ "Macau", 8, 0, RULE_NONE, "CT"},
+{5, /*Asia/Macau*/ "Macau", 8, 0, RULE_NONE, "C%sT"},
 {7, /*Asia/Magadan*/ "gadan", 11, 0, RULE_NONE, "+11"},
 {7, /*Asia/Makassar*/ "kassar", 8, 0, RULE_NONE, "WITA"},
 {7, /*Asia/Manila*/ "nila", 8, 0, RULE_NONE, "+08/+09"},
-{5, /*Asia/Nicosia*/ "Nicosia", 2, 0, RULE_EUAsia, "EET"},
+{5, /*Asia/Nicosia*/ "Nicosia", 2, 0, RULE_EUAsia, "EE%sT"},
 {6, /*Asia/Novokuznetsk*/ "ovokuznetsk", 7, 0, RULE_NONE, "+07"},
 {9, /*Asia/Novosibirsk*/ "sibirsk", 7, 0, RULE_NONE, "+07"},
 {5, /*Asia/Omsk*/ "Omsk", 6, 0, RULE_NONE, "+06"},
@@ -367,16 +367,16 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {5, /*Asia/Riyadh*/ "Riyadh", 3, 0, RULE_NONE, "+03"},
 {5, /*Asia/Sakhalin*/ "Sakhalin", 11, 0, RULE_NONE, "+11"},
 {7, /*Asia/Samarkand*/ "markand", 5, 0, RULE_NONE, "+05"},
-{6, /*Asia/Seoul*/ "eoul", 9, 0, RULE_NONE, "KT"},
-{6, /*Asia/Shanghai*/ "hanghai", 8, 0, RULE_NONE, "CT"},
+{6, /*Asia/Seoul*/ "eoul", 9, 0, RULE_NONE, "K%sT"},
+{6, /*Asia/Shanghai*/ "hanghai", 8, 0, RULE_NONE, "C%sT"},
 {6, /*Asia/Singapore*/ "ingapore", 8, 0, RULE_NONE, "+08"},
 {6, /*Asia/Srednekolymsk*/ "rednekolymsk", 11, 0, RULE_NONE, "+11"},
-{5, /*Asia/Taipei*/ "Taipei", 8, 0, RULE_NONE, "CT"},
+{5, /*Asia/Taipei*/ "Taipei", 8, 0, RULE_NONE, "C%sT"},
 {7, /*Asia/Tashkent*/ "shkent", 5, 0, RULE_NONE, "+05"},
 {6, /*Asia/Tbilisi*/ "bilisi", 4, 0, RULE_NONE, "+04"},
 {6, /*Asia/Tehran*/ "ehran", 3, 30, RULE_NONE, "+0330/+0430"},
 {6, /*Asia/Thimphu*/ "himphu", 6, 0, RULE_NONE, "+06"},
-{6, /*Asia/Tokyo*/ "okyo", 9, 0, RULE_NONE, "JT"},
+{6, /*Asia/Tokyo*/ "okyo", 9, 0, RULE_NONE, "J%sT"},
 {7, /*Asia/Tomsk*/ "msk", 7, 0, RULE_NONE, "+07"},
 {5, /*Asia/Ulaanbaatar*/ "Ulaanbaatar", 8, 0, RULE_NONE, "+08/+09"},
 {6, /*Asia/Urumqi*/ "rumqi", 6, 0, RULE_NONE, "+06"},
@@ -387,31 +387,31 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {6, /*Asia/Yekaterinburg*/ "ekaterinburg", 5, 0, RULE_NONE, "+05"},
 {7, /*Asia/Yerevan*/ "revan", 4, 0, RULE_NONE, "+04/+05"},
 {1, /*Atlantic/Azores*/ "tlantic/Azores", -1, 0, RULE_EU, "-01/+00"},
-{9, /*Atlantic/Bermuda*/ "Bermuda", -4, 0, RULE_US, "AT"},
-{9, /*Atlantic/Canary*/ "Canary", 0, 0, RULE_EU, "WET"},
+{9, /*Atlantic/Bermuda*/ "Bermuda", -4, 0, RULE_US, "A%sT"},
+{9, /*Atlantic/Canary*/ "Canary", 0, 0, RULE_EU, "WE%sT"},
 {11, /*Atlantic/Cape_Verde*/ "pe_Verde", -1, 0, RULE_NONE, "CVT"},
-{9, /*Atlantic/Faroe*/ "Faroe", 0, 0, RULE_EU, "WET"},
-{9, /*Atlantic/Madeira*/ "Madeira", 0, 0, RULE_EU, "WET"},
+{9, /*Atlantic/Faroe*/ "Faroe", 0, 0, RULE_EU, "WE%sT"},
+{9, /*Atlantic/Madeira*/ "Madeira", 0, 0, RULE_EU, "WE%sT"},
 {9, /*Atlantic/Reykjavik*/ "Reykjavik", 0, 0, RULE_NONE, "GMT"},
 {9, /*Atlantic/South_Georgia*/ "South_Georgia", -2, 0, RULE_NONE, "-02"},
 {10, /*Atlantic/Stanley*/ "tanley", -3, 0, RULE_NONE, "-03"},
-{1, /*Australia/Adelaide*/ "ustralia/Adelaide", 9, 30, RULE_AS, "ACT"},
-{10, /*Australia/Brisbane*/ "Brisbane", 10, 0, RULE_NONE, "AET"},
-{12, /*Australia/Broken_Hill*/ "oken_Hill", 9, 30, RULE_AS, "ACT"},
-{10, /*Australia/Currie*/ "Currie", 10, 0, RULE_AT, "AET"},
-{10, /*Australia/Darwin*/ "Darwin", 9, 30, RULE_NONE, "ACT"},
+{1, /*Australia/Adelaide*/ "ustralia/Adelaide", 9, 30, RULE_AS, "AC%sT"},
+{10, /*Australia/Brisbane*/ "Brisbane", 10, 0, RULE_NONE, "AE%sT"},
+{12, /*Australia/Broken_Hill*/ "oken_Hill", 9, 30, RULE_AS, "AC%sT"},
+{10, /*Australia/Currie*/ "Currie", 10, 0, RULE_AT, "AE%sT"},
+{10, /*Australia/Darwin*/ "Darwin", 9, 30, RULE_NONE, "AC%sT"},
 {10, /*Australia/Eucla*/ "Eucla", 8, 45, RULE_NONE, "+0845/+0945"},
-{10, /*Australia/Hobart*/ "Hobart", 10, 0, RULE_AT, "AET"},
-{10, /*Australia/Lindeman*/ "Lindeman", 10, 0, RULE_NONE, "AET"},
+{10, /*Australia/Hobart*/ "Hobart", 10, 0, RULE_AT, "AE%sT"},
+{10, /*Australia/Lindeman*/ "Lindeman", 10, 0, RULE_NONE, "AE%sT"},
 {11, /*Australia/Lord_Howe*/ "ord_Howe", 10, 30, RULE_LH, "+1030/+11"},
-{10, /*Australia/Melbourne*/ "Melbourne", 10, 0, RULE_AV, "AET"},
-{10, /*Australia/Perth*/ "Perth", 8, 0, RULE_NONE, "AWT"},
-{10, /*Australia/Sydney*/ "Sydney", 10, 0, RULE_AN, "AET"},
-{0, /*CET*/ "CET", 1, 0, RULE_C_Eur, "CET"},
-{1, /*CST6CDT*/ "ST6CDT", -6, 0, RULE_US, "CT"},
-{0, /*EET*/ "EET", 2, 0, RULE_EU, "EET"},
+{10, /*Australia/Melbourne*/ "Melbourne", 10, 0, RULE_AV, "AE%sT"},
+{10, /*Australia/Perth*/ "Perth", 8, 0, RULE_NONE, "AW%sT"},
+{10, /*Australia/Sydney*/ "Sydney", 10, 0, RULE_AN, "AE%sT"},
+{0, /*CET*/ "CET", 1, 0, RULE_C_Eur, "CE%sT"},
+{1, /*CST6CDT*/ "ST6CDT", -6, 0, RULE_US, "C%sT"},
+{0, /*EET*/ "EET", 2, 0, RULE_EU, "EE%sT"},
 {1, /*EST*/ "ST", -5, 0, RULE_NONE, "EST"},
-{3, /*EST5EDT*/ "5EDT", -5, 0, RULE_US, "ET"},
+{3, /*EST5EDT*/ "5EDT", -5, 0, RULE_US, "E%sT"},
 {1, /*Etc/GMT*/ "tc/GMT", 0, 0, RULE_NONE, "GMT"},
 {7, /*Etc/GMT+1*/ "+1", -1, 0, RULE_NONE, "-01"},
 {9, /*Etc/GMT+10*/ "0", -10, 0, RULE_NONE, "-10"},
@@ -441,52 +441,52 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {8, /*Etc/GMT-9*/ "9", 9, 0, RULE_NONE, "+09"},
 {4, /*Etc/UCT*/ "UCT", 0, 0, RULE_NONE, "UCT"},
 {5, /*Etc/UTC*/ "TC", 0, 0, RULE_NONE, "UTC"},
-{1, /*Europe/Amsterdam*/ "urope/Amsterdam", 1, 0, RULE_EU, "CET"},
-{8, /*Europe/Andorra*/ "ndorra", 1, 0, RULE_EU, "CET"},
+{1, /*Europe/Amsterdam*/ "urope/Amsterdam", 1, 0, RULE_EU, "CE%sT"},
+{8, /*Europe/Andorra*/ "ndorra", 1, 0, RULE_EU, "CE%sT"},
 {8, /*Europe/Astrakhan*/ "strakhan", 4, 0, RULE_NONE, "+04"},
-{8, /*Europe/Athens*/ "thens", 2, 0, RULE_EU, "EET"},
-{7, /*Europe/Belgrade*/ "Belgrade", 1, 0, RULE_EU, "CET"},
-{9, /*Europe/Berlin*/ "rlin", 1, 0, RULE_EU, "CET"},
-{8, /*Europe/Brussels*/ "russels", 1, 0, RULE_EU, "CET"},
-{8, /*Europe/Bucharest*/ "ucharest", 2, 0, RULE_EU, "EET"},
-{9, /*Europe/Budapest*/ "dapest", 1, 0, RULE_EU, "CET"},
-{7, /*Europe/Chisinau*/ "Chisinau", 2, 0, RULE_Moldova, "EET"},
-{8, /*Europe/Copenhagen*/ "openhagen", 1, 0, RULE_EU, "CET"},
+{8, /*Europe/Athens*/ "thens", 2, 0, RULE_EU, "EE%sT"},
+{7, /*Europe/Belgrade*/ "Belgrade", 1, 0, RULE_EU, "CE%sT"},
+{9, /*Europe/Berlin*/ "rlin", 1, 0, RULE_EU, "CE%sT"},
+{8, /*Europe/Brussels*/ "russels", 1, 0, RULE_EU, "CE%sT"},
+{8, /*Europe/Bucharest*/ "ucharest", 2, 0, RULE_EU, "EE%sT"},
+{9, /*Europe/Budapest*/ "dapest", 1, 0, RULE_EU, "CE%sT"},
+{7, /*Europe/Chisinau*/ "Chisinau", 2, 0, RULE_Moldova, "EE%sT"},
+{8, /*Europe/Copenhagen*/ "openhagen", 1, 0, RULE_EU, "CE%sT"},
 {7, /*Europe/Dublin*/ "Dublin", 0, 0, RULE_EU, "GMT/IST"},
-{7, /*Europe/Gibraltar*/ "Gibraltar", 1, 0, RULE_EU, "CET"},
-{7, /*Europe/Helsinki*/ "Helsinki", 2, 0, RULE_EU, "EET"},
+{7, /*Europe/Gibraltar*/ "Gibraltar", 1, 0, RULE_EU, "CE%sT"},
+{7, /*Europe/Helsinki*/ "Helsinki", 2, 0, RULE_EU, "EE%sT"},
 {7, /*Europe/Istanbul*/ "Istanbul", 3, 0, RULE_NONE, "+03"},
 {7, /*Europe/Kaliningrad*/ "Kaliningrad", 2, 0, RULE_NONE, "EET"},
-{8, /*Europe/Kiev*/ "iev", 2, 0, RULE_EU, "EET"},
+{8, /*Europe/Kiev*/ "iev", 2, 0, RULE_EU, "EE%sT"},
 {9, /*Europe/Kirov*/ "rov", 3, 0, RULE_NONE, "+03"},
-{7, /*Europe/Lisbon*/ "Lisbon", 0, 0, RULE_EU, "WET"},
+{7, /*Europe/Lisbon*/ "Lisbon", 0, 0, RULE_EU, "WE%sT"},
 {8, /*Europe/London*/ "ondon", 0, 0, RULE_EU, "GMT/BST"},
-{8, /*Europe/Luxembourg*/ "uxembourg", 1, 0, RULE_EU, "CET"},
-{7, /*Europe/Madrid*/ "Madrid", 1, 0, RULE_EU, "CET"},
-{9, /*Europe/Malta*/ "lta", 1, 0, RULE_EU, "CET"},
+{8, /*Europe/Luxembourg*/ "uxembourg", 1, 0, RULE_EU, "CE%sT"},
+{7, /*Europe/Madrid*/ "Madrid", 1, 0, RULE_EU, "CE%sT"},
+{9, /*Europe/Malta*/ "lta", 1, 0, RULE_EU, "CE%sT"},
 {8, /*Europe/Minsk*/ "insk", 3, 0, RULE_NONE, "+03"},
-{8, /*Europe/Monaco*/ "onaco", 1, 0, RULE_EU, "CET"},
+{8, /*Europe/Monaco*/ "onaco", 1, 0, RULE_EU, "CE%sT"},
 {9, /*Europe/Moscow*/ "scow", 3, 0, RULE_NONE, "MSK"},
-{7, /*Europe/Oslo*/ "Oslo", 1, 0, RULE_EU, "CET"},
-{7, /*Europe/Paris*/ "Paris", 1, 0, RULE_EU, "CET"},
-{8, /*Europe/Prague*/ "rague", 1, 0, RULE_EU, "CET"},
-{7, /*Europe/Riga*/ "Riga", 2, 0, RULE_EU, "EET"},
-{8, /*Europe/Rome*/ "ome", 1, 0, RULE_EU, "CET"},
+{7, /*Europe/Oslo*/ "Oslo", 1, 0, RULE_EU, "CE%sT"},
+{7, /*Europe/Paris*/ "Paris", 1, 0, RULE_EU, "CE%sT"},
+{8, /*Europe/Prague*/ "rague", 1, 0, RULE_EU, "CE%sT"},
+{7, /*Europe/Riga*/ "Riga", 2, 0, RULE_EU, "EE%sT"},
+{8, /*Europe/Rome*/ "ome", 1, 0, RULE_EU, "CE%sT"},
 {7, /*Europe/Samara*/ "Samara", 4, 0, RULE_NONE, "+04"},
 {9, /*Europe/Saratov*/ "ratov", 4, 0, RULE_NONE, "+04"},
 {8, /*Europe/Simferopol*/ "imferopol", 3, 0, RULE_NONE, "MSK"},
-{8, /*Europe/Sofia*/ "ofia", 2, 0, RULE_EU, "EET"},
-{8, /*Europe/Stockholm*/ "tockholm", 1, 0, RULE_EU, "CET"},
-{7, /*Europe/Tallinn*/ "Tallinn", 2, 0, RULE_EU, "EET"},
-{8, /*Europe/Tirane*/ "irane", 1, 0, RULE_EU, "CET"},
+{8, /*Europe/Sofia*/ "ofia", 2, 0, RULE_EU, "EE%sT"},
+{8, /*Europe/Stockholm*/ "tockholm", 1, 0, RULE_EU, "CE%sT"},
+{7, /*Europe/Tallinn*/ "Tallinn", 2, 0, RULE_EU, "EE%sT"},
+{8, /*Europe/Tirane*/ "irane", 1, 0, RULE_EU, "CE%sT"},
 {7, /*Europe/Ulyanovsk*/ "Ulyanovsk", 4, 0, RULE_NONE, "+04"},
-{8, /*Europe/Uzhgorod*/ "zhgorod", 2, 0, RULE_EU, "EET"},
-{7, /*Europe/Vienna*/ "Vienna", 1, 0, RULE_EU, "CET"},
-{9, /*Europe/Vilnius*/ "lnius", 2, 0, RULE_EU, "EET"},
+{8, /*Europe/Uzhgorod*/ "zhgorod", 2, 0, RULE_EU, "EE%sT"},
+{7, /*Europe/Vienna*/ "Vienna", 1, 0, RULE_EU, "CE%sT"},
+{9, /*Europe/Vilnius*/ "lnius", 2, 0, RULE_EU, "EE%sT"},
 {8, /*Europe/Volgograd*/ "olgograd", 3, 0, RULE_NONE, "+03"},
-{7, /*Europe/Warsaw*/ "Warsaw", 1, 0, RULE_EU, "CET"},
-{7, /*Europe/Zaporozhye*/ "Zaporozhye", 2, 0, RULE_EU, "EET"},
-{8, /*Europe/Zurich*/ "urich", 1, 0, RULE_EU, "CET"},
+{7, /*Europe/Warsaw*/ "Warsaw", 1, 0, RULE_EU, "CE%sT"},
+{7, /*Europe/Zaporozhye*/ "Zaporozhye", 2, 0, RULE_EU, "EE%sT"},
+{8, /*Europe/Zurich*/ "urich", 1, 0, RULE_EU, "CE%sT"},
 {0, /*HST*/ "HST", -10, 0, RULE_NONE, "HST"},
 {0, /*Indian/Chagos*/ "Indian/Chagos", 6, 0, RULE_NONE, "+06"},
 {9, /*Indian/Christmas*/ "ristmas", 7, 0, RULE_NONE, "+07"},
@@ -494,14 +494,14 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {7, /*Indian/Kerguelen*/ "Kerguelen", 5, 0, RULE_NONE, "+05"},
 {7, /*Indian/Mahe*/ "Mahe", 4, 0, RULE_NONE, "SCT"},
 {9, /*Indian/Maldives*/ "ldives", 5, 0, RULE_NONE, "+05"},
-{9, /*Indian/Mauritius*/ "uritius", 4, 0, RULE_NONE, "MUT"},
+{9, /*Indian/Mauritius*/ "uritius", 4, 0, RULE_NONE, "MU%sT"},
 {7, /*Indian/Reunion*/ "Reunion", 4, 0, RULE_NONE, "RET"},
-{0, /*MET*/ "MET", 1, 0, RULE_C_Eur, "MET"},
+{0, /*MET*/ "MET", 1, 0, RULE_C_Eur, "ME%sT"},
 {1, /*MST*/ "ST", -7, 0, RULE_NONE, "MST"},
-{3, /*MST7MDT*/ "7MDT", -7, 0, RULE_US, "MT"},
-{0, /*PST8PDT*/ "PST8PDT", -8, 0, RULE_US, "PT"},
+{3, /*MST7MDT*/ "7MDT", -7, 0, RULE_US, "M%sT"},
+{0, /*PST8PDT*/ "PST8PDT", -8, 0, RULE_US, "P%sT"},
 {1, /*Pacific/Apia*/ "acific/Apia", 13, 0, RULE_WS, "+13/+14"},
-{9, /*Pacific/Auckland*/ "uckland", 12, 0, RULE_NZ, "NZT"},
+{9, /*Pacific/Auckland*/ "uckland", 12, 0, RULE_NZ, "NZ%sT"},
 {8, /*Pacific/Bougainville*/ "Bougainville", 11, 0, RULE_NONE, "+11"},
 {8, /*Pacific/Chatham*/ "Chatham", 12, 45, RULE_Chatham, "+1245/+1345"},
 {10, /*Pacific/Chuuk*/ "uuk", 10, 0, RULE_NONE, "+10"},
@@ -536,7 +536,7 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 {9, /*Pacific/Tongatapu*/ "ongatapu", 13, 0, RULE_Tonga, "+13/+14"},
 {8, /*Pacific/Wake*/ "Wake", 12, 0, RULE_NONE, "+12"},
 {10, /*Pacific/Wallis*/ "llis", 12, 0, RULE_NONE, "+12"},
-{0, /*WET*/ "WET", 0, 0, RULE_EU, "WET"},
+{0, /*WET*/ "WET", 0, 0, RULE_EU, "WE%sT"},
 };
 typedef struct {
 	uint8_t zoneNameFromPrev : 5; // 0..31

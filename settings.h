@@ -24,7 +24,7 @@
 #include <Arduino.h>
 #include "schedule.h"
 
-const byte SETTINGSVERSION = 1;
+const byte SETTINGSVERSION = 2;
 typedef struct {
   byte version;
   char ssid[32];
@@ -37,7 +37,9 @@ typedef struct {
   byte netmask[4];
   byte logsvr[4];
   char ntp[64];
-  int utc;
+  bool use12hr;
+  bool usedmy;
+  char timezone[64];
   
   bool onAfterPFail;
   byte voltage;

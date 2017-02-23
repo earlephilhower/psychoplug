@@ -1,13 +1,29 @@
+/*
+  PsychoPlug
+  ESP8266 based remote outlet with standalone timer and MQTT integration
+  
+  Copyright (C) 2017  Earle F. Philhower, III
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <Arduino.h>
 #include <TimeLib.h>
+#include "timezone.h"
+#include "log.h"
 
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <string.h>
-//#include <stdint.h>
-//#include <time.h>
 #include "tz.h"
-
 
 typedef struct tm {
   uint8_t tm_sec; 
@@ -49,27 +65,13 @@ struct tm *gmtime(const time_t *timep)
   return &tm;
 }
 
-
-#if 0
-#define SECS_PER_MIN (60)
-#define SECS_PER_HOUR (60 * SECS_PER_MIN)
-#define SECS_PER_DAY (24 * SECS_PER_HOUR)
-
-void strlcpy(char *dest, const char *src, size_t len)
-{
-	strncpy(dest, src, len);
-	dest[len-1] = 0;
-}
-typedef enum {false, true} bool;
-#endif
-
 char *GetNextTZ(bool reset, char *buff, char buffLen)
 {
 	static uint16_t idxTZ = 0;
 	static uint16_t idxLink = 0;
 	if (reset) {
 		idxLink = 0;
-		idxLink = 0;
+		idxTZ = 0;
 	}
 
   const int tzcount = sizeof(mtimezone)/sizeof(mtimezone[0]);
@@ -109,8 +111,8 @@ static bool useDSTRule = false;  // Does the current TZ need DST handling?
 static uint16_t dstYear = 1900;  // What year the cached computations below are falid for
 static time_t dstChangeAtUTC[2]; // UTC time when the offset below takes effect
 static time_t dstOffsetSecs[2];  // Delta from default UTC offset to apply
-
-
+static char timezoneStr[16];     // Human readable string w/format specifiers for DST/non-DST
+static char dstString[2][4];     // Format specifier replacement
 
 void UpdateDSTInfo(time_t whenUTC)
 {
@@ -118,6 +120,8 @@ void UpdateDSTInfo(time_t whenUTC)
 	rule_t dstRule[2];
 	struct tm t;
 	int ruleIdx;
+
+  Log("Updating DST Info");
 
 	ruleIdx = 0;
 	for (int i=0; i<ruleCount && ruleIdx < 2; i++) {
@@ -131,6 +135,9 @@ void UpdateDSTInfo(time_t whenUTC)
 		useDSTRule = false;
 		return;
 	}
+
+  strlcpy(dstString[0], dstRule[0].fmtstr, sizeof(dstString[0]));
+  strlcpy(dstString[1], dstRule[1].fmtstr, sizeof(dstString[1]));
 
 	memcpy(&t, gmtime(&whenUTC), sizeof(t));
 	int curYear = 1900 + t.tm_year;
@@ -259,6 +266,42 @@ time_t LocalTime(time_t whenUTC)
 	}
 }
 
+char *AscTime(time_t whenUTC, bool use12Hr, bool useDMY, char *buff, int buffLen)
+{
+  time_t t = LocalTime(whenUTC);
+
+  char tzID[16];
+  if (!useDSTRule) {
+    // No TZ string replacement needed
+    strlcpy(tzID, timezoneStr, sizeof(tzID));
+  } else if ((whenUTC >= dstChangeAtUTC[0]) && (whenUTC < dstChangeAtUTC[1])) {
+    // At 1st DST change
+    snprintf(tzID, sizeof(tzID), timezoneStr, dstString[0]);
+  } else {
+    // After 2nd change or before 1st
+    snprintf(tzID, sizeof(tzID), timezoneStr, dstString[1]);
+  }
+
+  int h = hour(t);
+  int m = minute(t);
+  int s = second(t);
+  int mn = month(t);
+  int dy = day(t);
+  int yr = year(t);
+
+  const char *ampm = "";
+  if (use12Hr) {
+    if (h==0) { h = 12; ampm = "AM"; }
+    else if (h==12) { ampm = "PM"; }
+    else if (h<12) { ampm = "AM"; }
+    else { h -= 12; ampm = "PM"; }
+  }
+  snprintf(buff, buffLen, "%d:%02d:%02d%s %s, %d/%d/%d", h, m, s, ampm, tzID, useDMY?dy:mn, useDMY?mn:dy, yr);
+
+  return buff;
+}
+
+
 bool SetTZ(const char *tzName)
 {
 	timezoneNum = FindTZName(tzName);
@@ -267,6 +310,9 @@ bool SetTZ(const char *tzName)
 	// Store the UTC offset in seconds
 	utcOffsetSecs = abs(mtimezone[timezoneNum].gmtoffhr) * 3600 + mtimezone[timezoneNum].gmtoffmin;
 	if (mtimezone[timezoneNum].gmtoffhr < 0) utcOffsetSecs = -utcOffsetSecs;
+
+  // Store the timezone human readable string
+  strlcpy(timezoneStr, mtimezone[timezoneNum].formatstr, sizeof(timezoneStr));
 
 	if (mtimezone[timezoneNum].rule == RULE_NONE) {
 		useDSTRule = false;

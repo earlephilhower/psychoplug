@@ -25,6 +25,7 @@
 #include "settings.h"
 #include "mqtt.h"
 #include "relay.h"
+#include "timezone.h"
 
 const char *actionString[] = { "None", "On", "Off", "Toggle", "Pulse Off", "Pulse On" };
 
@@ -41,7 +42,7 @@ void ManageSchedule()
 
   // Sane startup time values
   if (lastHour == -1) {
-    time_t t = now();
+    time_t t = LocalTime(now());
     lastHour = hour(t);
     lastMin = minute(t);
     lastDOW = weekday(t) - 1; // We 0-index, weekday() 1-indexes
@@ -51,7 +52,7 @@ void ManageSchedule()
   // Only execute after we scan everything, so only last action done once even if there are
   // multiple entries for the same time or multiple times scanned.
 
-  time_t t = now();
+  time_t t = LocalTime(now());
   int newHour = hour(t);
   int newMin = minute(t);
   int newDOW = weekday(t)-1;

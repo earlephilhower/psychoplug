@@ -157,7 +157,7 @@ foreach $f (@files) {
 			$m = 0 if ($m eq "");
 			$h = int($h);
 			$m = int($m);
-			push @zone, sprintf("{REPLACEME, /*$zonename*/ \"$zonename\", $h, $m, $rules, \"$fmt\"},\n");
+			push @zone, "{REPLACEME, /*$zonename*/ \"$zonename\", $h, $m, $rules, \"$fmt\"},\n";
 			$zonename= "";
 		}
 	}
@@ -179,7 +179,7 @@ foreach $f (@files) {
 				$thisname =~ s/\"(.*)?\",//;
 				$thisname = $1;
 				if ($thisname eq $destzone) {
-					push @link, sprintf("{ REPLACEME, \"$linkname\", $i /*$thisname*/ },\n");
+					push @link, "{ REPLACEME, \"$linkname\", $i /*$thisname*/ },\n";
 					break;
 				}
 			}
