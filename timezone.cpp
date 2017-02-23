@@ -121,7 +121,7 @@ void UpdateDSTInfo(time_t whenUTC)
 	struct tm t;
 	int ruleIdx;
 
-  Log("Updating DST Info");
+  Log("Updating DST Info\n");
 
 	ruleIdx = 0;
 	for (int i=0; i<ruleCount && ruleIdx < 2; i++) {

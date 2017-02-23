@@ -64,9 +64,10 @@ typedef struct {
 } Settings;
 extern Settings settings;
 
+void StartSettings();
 bool LoadSettings(bool reset);
 void SaveSettings();
-
+void StopSettings();
 
 #endif
 

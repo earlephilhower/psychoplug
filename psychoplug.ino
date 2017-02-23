@@ -19,11 +19,6 @@
 */
 
 #include <ESP8266WiFi.h>
-#include <EEPROM.h>
-#include <WiFiUdp.h>
-#include <TimeLib.h>
-#include <Wire.h>
-#include <MQTTClient.h>
 
 #include "psychoplug.h"
 #include "settings.h"
@@ -39,8 +34,6 @@
 #include "timezone.h"
 
 bool isSetup = false;
-Settings settings;
-
 
 // Global way of writing out dynamic HTML to socket
 // snprintf guarantees a null termination
@@ -55,14 +48,13 @@ static WiFiServer webIface(80);
 
 
 // Return a *static* char * to an IP formatted string, so DO NOT USE MORE THAN ONCE PER LINE
-const char *PrintIP(const byte ip[4])
+const char *FormatIP(const byte ip[4], char *buff, int buffLen)
 {
-  static char str[17]; // 255.255.255.255\0
-  sprintf(str, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-  return str;
+  snprintf(buff, buffLen, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+  return buff;
 }
 
-const char *PrintBool(bool b)
+const char *FormatBool(bool b)
 {
   return b ? "True" : "False";
 }
@@ -71,35 +63,37 @@ const char *encoding = "<meta http-equiv=\"Content-Type\" content=\"text/html; c
 
 void PrintSettings(WiFiClient *client)
 {
+  char buff[16];
+
   WebPrintf(client, "Version: %d<br>\n", settings.version);
   
   WebPrintf(client, "<br><h1>WiFi Network</h1>\n");
   WebPrintf(client, "SSID: %s<br>\n", settings.ssid);
   WebPrintf(client, "PSK: %s<br>\n", settings.psk);
   WebPrintf(client, "Hostname: %s<br>\n", settings.hostname);
-  WebPrintf(client, "DHCP: %s<br>\n", PrintBool(settings.useDHCP));
+  WebPrintf(client, "DHCP: %s<br>\n", FormatBool(settings.useDHCP));
   if (!settings.useDHCP) {
-    WebPrintf(client, "IP: %s<br>\n", PrintIP(settings.ip));
-    WebPrintf(client, "Gateway: %s<br>\n", PrintIP(settings.gateway));
-    WebPrintf(client, "Netmask: %s<br>\n", PrintIP(settings.netmask));
-    WebPrintf(client, "DNS: %s<br>\n", PrintIP(settings.dns));
+    WebPrintf(client, "IP: %s<br>\n", FormatIP(settings.ip, buff, sizeof(buff)));
+    WebPrintf(client, "Gateway: %s<br>\n", FormatIP(settings.gateway, buff, sizeof(buff)));
+    WebPrintf(client, "Netmask: %s<br>\n", FormatIP(settings.netmask, buff, sizeof(buff)));
+    WebPrintf(client, "DNS: %s<br>\n", FormatIP(settings.dns, buff, sizeof(buff)));
   }
-  WebPrintf(client, "UDP Log Server: %s:9911 (nc -l -u 9911)<br>\n", PrintIP(settings.logsvr));
+  WebPrintf(client, "UDP Log Server: %s:9911 (nc -l -u 9911)<br>\n", FormatIP(settings.logsvr, buff, sizeof(buff)));
   
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
   WebPrintf(client, "NTP: %s<br>\n", settings.ntp);
   WebPrintf(client, "Timezone: %s<br>\n", settings.timezone);
-  WebPrintf(client, "12 hour time format: %s<br>\n", PrintBool(settings.use12hr));
-  WebPrintf(client, "DD/MM/YY date format: %s<br>\n", PrintBool(settings.usedmy));
+  WebPrintf(client, "12 hour time format: %s<br>\n", FormatBool(settings.use12hr));
+  WebPrintf(client, "DD/MM/YY date format: %s<br>\n", FormatBool(settings.usedmy));
   
   WebPrintf(client, "<br><h1>Power Settings</h1>\n");
   WebPrintf(client, "System Voltage: %d<br>\n", settings.voltage);
-  WebPrintf(client, "On after power failure: %s<br>\n", PrintBool(settings.onAfterPFail));
+  WebPrintf(client, "On after power failure: %s<br>\n", FormatBool(settings.onAfterPFail));
 
   WebPrintf(client, "<br><H1>MQTT</h1>\n");
   WebPrintf(client, "Host: %s<br>\n", settings.mqttHost);
   WebPrintf(client, "Port: %d<br>\n", settings.mqttPort);
-  WebPrintf(client, "Use SSL: %s<br>\n", PrintBool(settings.mqttSSL));
+  WebPrintf(client, "Use SSL: %s<br>\n", FormatBool(settings.mqttSSL));
   WebPrintf(client, "ClientID: %s<br>\n", settings.mqttClientID);
   WebPrintf(client, "Topic: %s<br>\n", settings.mqttTopic);
   WebPrintf(client, "User: %s<br>\n", settings.mqttUser);
@@ -178,14 +172,14 @@ void StartSTA()
   
   if (WiFi.status() != WL_CONNECTED) {
     Reset(); // Punt, maybe we're in a weird way.  Reboot and try it again
-  } else {
-    // Start standard interface
-    webIface.begin();
-    StartNTP();
   }
-
-  StartLog();
+  
   StartMQTT();
+    
+  // Start standard interface
+  webIface.begin();
+  StartNTP();
+  StartLog();
 }
 
 // In-place decoder, overwrites source with decoded values.  Needs 0-termination on input
@@ -448,6 +442,8 @@ void WebTimezonePicker(WiFiClient *client)
 // Setup web page
 void SendSetupHTML(WiFiClient *client)
 {
+  char buff[16];
+  
   WebHeaders(client, NULL);
   WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>%s</head>\n", encoding);
   WebPrintf(client, "<body><h1>PsychoPlug Setup</h1>\n");
@@ -459,11 +455,11 @@ void SendSetupHTML(WiFiClient *client)
   WebFormText(client, "Hostname", "hostname", settings.hostname, true);
   const char *ary1[] = {"ip", "netmask", "gw", "dns", ""};
   WebFormCheckboxDisabler(client, "DHCP Networking", "usedhcp", false, settings.useDHCP, true, ary1 );
-  WebFormText(client, "IP", "ip", PrintIP(settings.ip), !settings.useDHCP);
-  WebFormText(client, "Netmask", "netmask", PrintIP(settings.netmask), !settings.useDHCP);
-  WebFormText(client, "Gateway", "gw", PrintIP(settings.gateway), !settings.useDHCP);
-  WebFormText(client, "DNS", "dns", PrintIP(settings.dns), !settings.useDHCP);
-  WebFormText(client, "UDP Log Server", "logsvr", PrintIP(settings.logsvr), true);
+  WebFormText(client, "IP", "ip", FormatIP(settings.ip, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, "Netmask", "netmask", FormatIP(settings.netmask, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, "Gateway", "gw", FormatIP(settings.gateway, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, "DNS", "dns", FormatIP(settings.dns, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, "UDP Log Server", "logsvr", FormatIP(settings.logsvr, buff, sizeof(buff)), true);
   
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
   WebFormText(client, "NTP Server", "ntp", settings.ntp, true);
@@ -515,7 +511,11 @@ void SendStatusHTML(WiFiClient *client)
     for (byte j=0; j<7; j++) {
       WebPrintf(client, "<td><input type=\"checkbox\" disabled%s></td>", (settings.event[i].dayMask & (1<<j))?" checked":"");
     }
-    WebPrintf(client, "<td>%d:%02d %s</td>", (settings.event[i].hour)?settings.event[i].hour%12:12, settings.event[i].minute, (settings.event[i].hour<12)?"AM":"PM");
+    if (settings.use12hr) {
+      WebPrintf(client, "<td>%d:%02d %s</td>", (settings.event[i].hour)?settings.event[i].hour%12:12, settings.event[i].minute, (settings.event[i].hour<12)?"AM":"PM");
+    } else {
+      WebPrintf(client, "<td>%d:%02d</td>", settings.event[i].hour, settings.event[i].minute);
+    }
     WebPrintf(client, "<td>%s</td>", actionString[settings.event[i].action]);
     WebPrintf(client, "<td><a href=\"edit.html?id=%d\">Edit</a></td></tr>\r\n", i);
   }
@@ -545,10 +545,16 @@ void SendEditHTML(WiFiClient *client, int id)
   for (byte j=0; j<7; j++) {
     WebPrintf(client, "<td><input type=\"checkbox\" id=\"%c\" name=\"%c\" %s></td>\n", 'a'+j, 'a'+j, settings.event[id].dayMask & (1<<j)?" checked":"");
   }
-  WebPrintf(client, "<td><select name=\"hr\">");
-  for (int j=0; j<12; j++) {
-    if (settings.event[id].hour) WebPrintf(client, "<option %s>%d</option>", (settings.event[id].hour%12)==j?"selected":"", j)
-    else WebPrintf(client, "<option %s>%d</option>", j==0?"selected":"", j+1);
+    WebPrintf(client, "<td><select name=\"hr\">");
+  if (settings.use12hr) {
+    for (int j=0; j<12; j++) {
+      if (settings.event[id].hour) WebPrintf(client, "<option %s>%d</option>", (settings.event[id].hour%12)==j?"selected":"", j)
+      else WebPrintf(client, "<option %s>%d</option>", j==0?"selected":"", j+1);
+    }
+  } else {
+    for (int j=0; j<24; j++) {
+      WebPrintf(client, "<option %s>%d</option>", settings.event[id].hour==j?"selected":"", j)
+    }
   }
   WebPrintf(client, "</select>:<select name=\"mn\">");
   for (int j=0; j<60; j++) WebPrintf(client, "<option %s>%02d</option>", (settings.event[id].minute==j)?"selected":"", j);
@@ -574,11 +580,11 @@ void setup()
   Log("Starting up...\n");
   delay(100);
 
+  StartSettings();
   StartRelay();
   StartButton();
   StartLED();
   StartPowerMonitor();
-  delay(1);
   
   Log("Loading Settings\n");
   
@@ -592,8 +598,6 @@ void setup()
     isSetup = false;
     StartSetupAP();
   }
-
-  
 
   Log("End setup()\n");
 }
@@ -643,6 +647,8 @@ void ParseSetupForm(char *params)
   settings.onAfterPFail = false;
   settings.mqttEnable = false;
   settings.mqttSSL = false;
+  settings.use12hr = false;
+  settings.usedmy = false;
   
   while (ParseParam(&params, &namePtr, &valPtr)) {
     ParamText("ssid", settings.ssid);
@@ -708,8 +714,14 @@ void SendResetHTML(WiFiClient *client)
 
 void Reset()
 {
+  SaveSettings();
+  StopSettings();
+
   // Will hang if you just did serial upload.  Needs powercycle once after upload to function properly.
   ESP.restart();
+
+  // Should never hit here...
+  delay(1000000);
 }
 
 void loop()
@@ -742,15 +754,6 @@ void loop()
       } else if (!strcmp(url, "config.html") && *params) {
         ParseSetupForm(params);
         SendRebootHTML(&client);
-        SaveSettings();
-        isSetup = true;
-        delay(500);
-        client.stop();
-        delay(500);
-        webSetup.stop();
-        delay(500);
-        WiFi.mode(WIFI_OFF);
-        delay(500);
         Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
       } else {
         WebError(&client, "404", NULL, "Not Found");
@@ -777,13 +780,6 @@ void loop()
         SendSuccessHTML(&client);
       } else if (!strcmp(url, "hang.html")) {
         SendResetHTML(&client);
-        delay(500);
-        client.stop();
-        delay(500);
-        webIface.stop();
-        delay(500);
-        WiFi.mode(WIFI_OFF);
-        delay(500);
         Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
       } else if (!strcmp("edit.html", url) && *params) {
         int id = -1;
@@ -807,7 +803,11 @@ void loop()
           ParamInt("id", id);
           ParamInt("hr", hr);
           ParamInt("mn", mn);
-          if (!strcmp(namePtr, "ampm")) { if (!strcmp("AM", valPtr)) ampm=0; else if (!strcmp("PM", valPtr)) ampm=1; }
+          if (settings.use12hr) {
+            if (!strcmp(namePtr, "ampm")) { if (!strcmp("AM", valPtr)) ampm=0; else if (!strcmp("PM", valPtr)) ampm=1; }
+          } else {
+             ampm = 0;
+          }
           if (!strcmp(namePtr, "action")) {
             for (int i=0; i<=ACTION_MAX; i++) if (!strcmp(valPtr, actionString[i])) action = i;
           }
@@ -818,18 +818,22 @@ void loop()
         bool err = false;
         // Check settings are good
         if (id < 0 || id >= MAXEVENTS) err = true;
-        if (hr < 0 || hr > 12) err = true;
+        if (settings.use12hr) {
+          if (hr < 0 || hr > 12) err = true;
+        } else {
+          if (hr < 0 || hr > 23) err = true;
+        }
         if (mn < 0 || mn >= 60) err = true;
         if (ampm < 0 || ampm > 1) err = true;
         if (action < 0 || action > ACTION_MAX ) err = true;
         
-        if (hr==12 && ampm==0) { hr = 0; }
+        if (hr==12 && ampm==0 && settings.use12hr) { hr = 0; }
         if (err) {
           WebError(&client, "400", NULL, "Bad Request");
         } else {
           // Update the entry, send refresh page to send back to index
           settings.event[id].dayMask = mask;
-          settings.event[id].hour = hr + 12 * ampm;
+          settings.event[id].hour = hr + 12 * ampm; // !use12hr => ampm=0, so safe
           settings.event[id].minute = mn;
           settings.event[id].action = action;
           SaveSettings(); // Store in flash
@@ -841,14 +845,6 @@ void loop()
         ParseSetupForm(params);
         SendRebootHTML(&client);
         SaveSettings();
-        client.stop();
-        delay(500);
-        client.stop();
-        delay(500);
-        webIface.stop();
-        delay(500);
-        WiFi.mode(WIFI_OFF);
-        delay(500);
         Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
       } else {
         WebError(&client, "404", NULL, "Not Found");

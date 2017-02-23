@@ -60,7 +60,7 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
 
 void StartMQTT()
 {
-  LogPrintf("Starting MQTT\n");
+  Log("Starting MQTT\n");
   if (settings.mqttEnable) {
     mqttClient.begin(settings.mqttHost, settings.mqttPort, settings.mqttSSL ? wifiMQTTSSL : wifiMQTT);
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
@@ -88,7 +88,6 @@ void StopMQTT()
 
 void MQTTPublish(const char *key, const char *value)
 {
-//  LogPrintf("MQTTPublish: '%s'='%s'\n", key, value);
   if (isSetup && settings.mqttEnable && mqttClient.connected()) {
     char topic[128];
     snprintf(topic, sizeof(topic), "%s/%s", settings.mqttTopic, key);
