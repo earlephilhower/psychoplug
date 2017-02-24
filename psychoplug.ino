@@ -43,8 +43,7 @@ bool isSetup = false;
 static char reqBuff[512];
 
 // HTTP interface
-static WiFiServer webSetup(80);
-static WiFiServer webIface(80);
+static WiFiServer web(80);
 
 
 // Return a *static* char * to an IP formatted string, so DO NOT USE MORE THAN ONCE PER LINE
@@ -91,6 +90,7 @@ void PrintSettings(WiFiClient *client)
   WebPrintf(client, "On after power failure: %s<br>\n", FormatBool(settings.onAfterPFail));
 
   WebPrintf(client, "<br><H1>MQTT</h1>\n");
+  WebPrintf(client, "Enabled: %s<br>\n", FormatBool(settings.mqttEnable));
   WebPrintf(client, "Host: %s<br>\n", settings.mqttHost);
   WebPrintf(client, "Port: %d<br>\n", settings.mqttPort);
   WebPrintf(client, "Use SSL: %s<br>\n", FormatBool(settings.mqttSSL));
@@ -147,7 +147,7 @@ void StartSetupAP()
   WiFi.softAP(ssid);
 
   Log("Waiting for connection\n");
-  webSetup.begin();
+  web.begin();
 }
 
 void StartSTA()
@@ -180,9 +180,12 @@ void StartSTA()
   StartMQTT();
     
   // Start standard interface
-  webIface.begin();
+  web.begin();
   StartNTP();
   StartLog();
+  
+  SetTZ(settings.timezone);
+  (void)LocalTime(now());
 }
 
 // In-place decoder, overwrites source with decoded values.  Needs 0-termination on input
@@ -729,15 +732,86 @@ void Reset()
   delay(1000000);
 }
 
+
+void HandleConfigSubmit(WiFiClient *client, char *params)
+{
+  ParseSetupForm(params);
+  SaveSettings();
+  SendRebootHTML(client);
+  Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
+}
+
+void HandleUpdateSubmit(WiFiClient *client, char *params)
+{
+  char *namePtr;
+  char *valPtr;
+
+  // Any of these not defined in the submit, error
+  int id = -1;
+  int hr = -1;
+  int mn = -1;
+  int ampm = -1;
+  int action = -1;
+  byte mask = 0; // Day bitmap
+  while (ParseParam(&params, &namePtr, &valPtr)) {
+    ParamInt("id", id);
+    ParamInt("hr", hr);
+    ParamInt("mn", mn);
+    if (settings.use12hr) {
+      if (!strcmp(namePtr, "ampm")) { if (!strcmp("AM", valPtr)) ampm=0; else if (!strcmp("PM", valPtr)) ampm=1; }
+    } else {
+       ampm = 0;
+    }
+    if (!strcmp(namePtr, "action")) {
+      for (int i=0; i<=ACTION_MAX; i++) if (!strcmp(valPtr, actionString[i])) action = i;
+    }
+    if (namePtr[0]>='a' && namePtr[0]<='g' && namePtr[1]==0) {
+      if (!strcmp(valPtr, "on")) mask |= 1<<(namePtr[0]-'a');
+    }
+  }
+  bool err = false;
+  // Check settings are good
+  if (id < 0 || id >= MAXEVENTS) err = true;
+  if (settings.use12hr) {
+    if (hr < 0 || hr > 12) err = true;
+  } else {
+    if (hr < 0 || hr > 23) err = true;
+  }
+  if (mn < 0 || mn >= 60) err = true;
+  if (ampm < 0 || ampm > 1) err = true;
+  if (action < 0 || action > ACTION_MAX ) err = true;
+  
+  if (hr==12 && ampm==0 && settings.use12hr) { hr = 0; }
+  if (err) {
+    WebError(client, "400", NULL, "Bad Request");
+  } else {
+    // Update the entry, send refresh page to send back to index
+    settings.event[id].dayMask = mask;
+    settings.event[id].hour = hr + 12 * ampm; // !use12hr => ampm=0, so safe
+    settings.event[id].minute = mn;
+    settings.event[id].action = action;
+    SaveSettings(); // Store in flash
+    SendSuccessHTML(client);
+  }
+}
+
+void HandleEditHTML(WiFiClient *client, char *params)
+{
+  int id = -1;
+  char *namePtr;
+  char *valPtr;
+  while (ParseParam(&params, &namePtr, &valPtr)) {
+    ParamInt("id", id);
+  }
+  if (id >=0 && id < MAXEVENTS) {
+    SendEditHTML(client, id);
+  } else {
+    WebError(client, "400", NULL, "Bad Request");
+  }
+}
+
 void loop()
 {
-  // Want to know current year to set the timezone properly, wait until setup() has completed
-  static bool settz = false;
-  if (!settz) {
-    settz = true;
-    SetTZ(settings.timezone);
-  }
-
   // Let the button toggle the relay always
   ManageButton();
 
@@ -750,16 +824,14 @@ void loop()
   char *valPtr;
 
   if (!isSetup) {
-    WiFiClient client = webSetup.available();
+    WiFiClient client = web.available();
     if (!client) return;
     
     if (WebReadRequest(&client, &url, &params, false)) {
       if (IsIndexHTML(url)) {
         SendSetupHTML(&client);
       } else if (!strcmp(url, "config.html") && *params) {
-        ParseSetupForm(params);
-        SendRebootHTML(&client);
-        Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
+        HandleConfigSubmit(&client, params);
       } else {
         WebError(&client, "404", NULL, "Not Found");
       }
@@ -771,7 +843,7 @@ void loop()
     ManageSchedule();
     ManagePowerMonitor();
     
-    WiFiClient client = webIface.available();
+    WiFiClient client = web.available();
     if (!client) return;
 
     if (WebReadRequest(&client, &url, &params, true)) {
@@ -787,70 +859,13 @@ void loop()
         SendResetHTML(&client);
         Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
       } else if (!strcmp("edit.html", url) && *params) {
-        int id = -1;
-        while (ParseParam(&params, &namePtr, &valPtr)) {
-          ParamInt("id", id);
-        }
-        if (id >=0 && id < MAXEVENTS) {
-          SendEditHTML(&client, id);
-        } else {
-          WebError(&client, "400", NULL, "Bad Request");
-        }
+        HandleEditHTML(&client, params);
       } else if (!strcmp("update.html", url) && *params) {
-        // Any of these not defined in the submit, error
-        int id = -1;
-        int hr = -1;
-        int mn = -1;
-        int ampm = -1;
-        int action = -1;
-        byte mask = 0; // Day bitmap
-        while (ParseParam(&params, &namePtr, &valPtr)) {
-          ParamInt("id", id);
-          ParamInt("hr", hr);
-          ParamInt("mn", mn);
-          if (settings.use12hr) {
-            if (!strcmp(namePtr, "ampm")) { if (!strcmp("AM", valPtr)) ampm=0; else if (!strcmp("PM", valPtr)) ampm=1; }
-          } else {
-             ampm = 0;
-          }
-          if (!strcmp(namePtr, "action")) {
-            for (int i=0; i<=ACTION_MAX; i++) if (!strcmp(valPtr, actionString[i])) action = i;
-          }
-          if (namePtr[0]>='a' && namePtr[0]<='g' && namePtr[1]==0) {
-            if (!strcmp(valPtr, "on")) mask |= 1<<(namePtr[0]-'a');
-          }
-        }
-        bool err = false;
-        // Check settings are good
-        if (id < 0 || id >= MAXEVENTS) err = true;
-        if (settings.use12hr) {
-          if (hr < 0 || hr > 12) err = true;
-        } else {
-          if (hr < 0 || hr > 23) err = true;
-        }
-        if (mn < 0 || mn >= 60) err = true;
-        if (ampm < 0 || ampm > 1) err = true;
-        if (action < 0 || action > ACTION_MAX ) err = true;
-        
-        if (hr==12 && ampm==0 && settings.use12hr) { hr = 0; }
-        if (err) {
-          WebError(&client, "400", NULL, "Bad Request");
-        } else {
-          // Update the entry, send refresh page to send back to index
-          settings.event[id].dayMask = mask;
-          settings.event[id].hour = hr + 12 * ampm; // !use12hr => ampm=0, so safe
-          settings.event[id].minute = mn;
-          settings.event[id].action = action;
-          SaveSettings(); // Store in flash
-          SendSuccessHTML(&client);
-        }
+        HandleUpdateSubmit(&client, params);
       } else if (!strcmp("reconfig.html", url)) {
         SendSetupHTML(&client);
       } else if (!strcmp(url, "config.html") && *params) {
-        ParseSetupForm(params);
-        SendRebootHTML(&client);
-        SaveSettings();
-        Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
+        HandleConfigSubmit(&client, params);
       } else {
         WebError(&client, "404", NULL, "Not Found");
       }

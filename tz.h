@@ -73,7 +73,7 @@ typedef struct {
        uint8_t atref      : 2; // 0..2
        uint8_t offsethrs  : 2; // 0..2
        uint8_t offsetmins : 6; // 0..59
-       char *fmtstr;           // Empirical, longest is >> average
+       const char *fmtstr;     // Empirical, longest is >> average
 } rule_t;
 static const rule_t rules[] ICACHE_RODATA_ATTR = {
 {RULE_AN, MON_APR, SUN_GTEQ, 1, 2, 0, ATREF_S, 0, 0, "S"},
@@ -144,11 +144,11 @@ static const rule_t rules[] ICACHE_RODATA_ATTR = {
 };
 typedef struct {
 	uint8_t zoneNameFromPrev : 5; // 0..31
-	char *zonename;
+	const char *zonename;
 	int8_t gmtoffhr   : 5; // -12...+12
 	uint8_t gmtoffmin : 6; // 0..59
 	uint8_t rule      : 6; // Empirical 44 rules
-	char *formatstr;       // Empirical lots of variation
+	const char *formatstr; // Empirical lots of variation
 } timezone_t;
 
 static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
@@ -540,7 +540,7 @@ static const timezone_t mtimezone[] ICACHE_RODATA_ATTR = {
 };
 typedef struct {
 	uint8_t zoneNameFromPrev : 5; // 0..31
-	char *zonename;
+	const char *zonename;
 	uint16_t timezone        : 9; // Empirical # of timezones < 511
 } link_t;
 

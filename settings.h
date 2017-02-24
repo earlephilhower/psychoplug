@@ -28,7 +28,7 @@ const byte SETTINGSVERSION = 2;
 typedef struct {
   byte version;
   char ssid[32];
-  char psk[64];
+  char psk[32];
   char hostname[32];
   bool useDHCP;
   byte ip[4];
@@ -36,23 +36,23 @@ typedef struct {
   byte gateway[4];
   byte netmask[4];
   byte logsvr[4];
-  char ntp[64];
+  char ntp[48];
   bool use12hr;
   bool usedmy;
-  char timezone[64];
+  char timezone[32];
   
   bool onAfterPFail;
   byte voltage;
   
   // MQTT Configuration
   bool mqttEnable;
-  char mqttHost[64];
+  char mqttHost[48];
   int mqttPort;
   bool mqttSSL;
   char mqttClientID[32];
-  char mqttTopic[64]; 
+  char mqttTopic[32]; 
   char mqttUser[32];
-  char mqttPass[64];
+  char mqttPass[32];
 
   // Web Interface
   char uiUser[32];

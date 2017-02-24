@@ -29,7 +29,7 @@ void StartLED()
   pinMode(PIN_LED, OUTPUT);
 }
 
-static const uint32_t ledBlinkValue[] = {
+static const uint32_t ledBlinkValue[] ICACHE_RODATA_ATTR = {
   0x00000000, // LED_OFF
   0xffffffff, // LED_ON
   0xffff0000, // LED_CONNECTING (slow blink)

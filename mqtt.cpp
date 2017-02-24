@@ -36,13 +36,13 @@ static MQTTClient mqttClient;
 // Callback for the MQTT library
 void messageReceived(String topic, String payload, char *bytes, unsigned int length)
 {
-  char t[128], p[128];
+  char t[128], p[32];
 
   (void)bytes;
   (void)length;
   
-  topic.toCharArray(t, 128);
-  payload.toCharArray(p, 128);
+  topic.toCharArray(t, sizeof(t));
+  payload.toCharArray(p, sizeof(p));
   LogPrintf("MQTT: '%s'='%s'\n", t, p); 
 
   char topicStr[128];

@@ -28,7 +28,7 @@
 
 static WiFiUDP ntpUDP;
 static time_t GetNTPTime();
-static void SendNTPPacket(IPAddress &address);
+static void SendNTPPacket(IPAddress &address, byte *packetBuffer);
 
 
 void StartNTP()
@@ -47,17 +47,17 @@ void StopNTP()
 
 /*-------- NTP code ----------*/
 /* Taken from the ESP8266 WebClient NTP sample */
-static const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
-static byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
+#define NTP_PACKET_SIZE (48) // NTP time is in the first 48 bytes of message
 
 static time_t GetNTPTime()
 {
   IPAddress ntpServerIP; // NTP server's ip address
+  byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
 
   while (ntpUDP.parsePacket() > 0) ; // discard any previously received packets
   // get a random server from the pool
   WiFi.hostByName(settings.ntp, ntpServerIP);
-  SendNTPPacket(ntpServerIP);
+  SendNTPPacket(ntpServerIP, packetBuffer);
   int timeout = 1500; // Avoid issue of millis() rollover
   while (timeout--) {
     int size = ntpUDP.parsePacket();
@@ -78,7 +78,7 @@ static time_t GetNTPTime()
 
 
 // send an NTP request to the time server at the given address
-static void SendNTPPacket(IPAddress &address)
+static void SendNTPPacket(IPAddress &address, byte *packetBuffer)
 {
   // set all bytes in the buffer to 0
   memset(packetBuffer, 0, NTP_PACKET_SIZE);
