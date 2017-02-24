@@ -841,6 +841,7 @@ void loop()
     } else {
       WebError(&client, "400", NULL, "Bad Request");
     }
+    client.stop();
   } else {
     ManageMQTT();
     ManageSchedule();
@@ -873,6 +874,7 @@ void loop()
         WebError(&client, "404", NULL, "Not Found");
       }
     }
+    client.stop();
   }
 }
 
