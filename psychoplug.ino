@@ -37,14 +37,13 @@ bool isSetup = false;
 
 // Global way of writing out dynamic HTML to socket
 // snprintf guarantees a null termination
-#define WebPrintf(c, fmt, ...) { char webBuff[512]; snprintf(webBuff, sizeof(webBuff), fmt, ## __VA_ARGS__); (c)->print(webBuff); }
+#define WebPrintf(c, fmt, ...) { char webBuff[512]; snprintf_P(webBuff, sizeof(webBuff), PSTR(fmt), ## __VA_ARGS__); (c)->print(webBuff); }
 
 // Web request line (URL, PARAMs parsed in-line)
 static char reqBuff[512];
 
 // HTTP interface
 static WiFiServer web(80);
-
 
 // Return a *static* char * to an IP formatted string, so DO NOT USE MORE THAN ONCE PER LINE
 const char *FormatIP(const byte ip[4], char *buff, int buffLen)
@@ -586,7 +585,7 @@ void setup()
 {
   Serial.begin(9600);
   Log("Starting up...\n");
-  delay(100);
+  delay(10);
 
   StartSettings();
   StartRelay();
@@ -812,6 +811,10 @@ void HandleEditHTML(WiFiClient *client, char *params)
 
 void loop()
 {
+  static uint8_t cnt = 0;
+  if (!cnt) LogPrintf("HeapFree=%d\n", ESP.getFreeHeap());
+  cnt++;
+  
   // Let the button toggle the relay always
   ManageButton();
 

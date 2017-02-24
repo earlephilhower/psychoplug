@@ -61,6 +61,7 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
 void StartMQTT()
 {
   Log("Starting MQTT\n");
+  LogPrintf("Free heap = %d\nConnecting MQTT...\n", ESP.getFreeHeap());
   if (settings.mqttEnable) {
     mqttClient.begin(settings.mqttHost, settings.mqttPort, settings.mqttSSL ? wifiMQTTSSL : wifiMQTT);
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
@@ -70,6 +71,7 @@ void StartMQTT()
       mqttClient.subscribe(topic);
     }
   }
+  LogPrintf("Free heap = %d after connection\n", ESP.getFreeHeap());
 }
 
 void ManageMQTT()

@@ -29,6 +29,6 @@ void StopLog();
 extern void Log(const char *str);
 
 // Ease-of-use to send formatted output
-#define LogPrintf(fmt, ...) { char buff[256]; snprintf(buff, sizeof(buff), fmt, ## __VA_ARGS__); Log(buff); }
+#define LogPrintf(fmt, ...) { char buff[256]; snprintf_P(buff, sizeof(buff), PSTR(fmt), ## __VA_ARGS__); Log(buff); }
 
 #endif

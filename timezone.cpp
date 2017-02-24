@@ -77,11 +77,15 @@ char *GetNextTZ(bool reset, char *buff, char buffLen)
   const int tzcount = sizeof(mtimezone)/sizeof(mtimezone[0]);
   const int linkcount = sizeof(link)/sizeof(link[0]);
 	if (idxTZ < tzcount) {
-		strlcpy(buff + mtimezone[idxTZ].zoneNameFromPrev,  mtimezone[idxTZ].zonename, buffLen - mtimezone[idxTZ].zoneNameFromPrev);
+    timezone_t l;
+    memcpy_P(&l, &mtimezone[idxTZ], sizeof(l));
+		strlcpy(buff + l.zoneNameFromPrev,l.zonename, buffLen - l.zoneNameFromPrev);
 		idxTZ++;
 		return buff;
 	} else if (idxLink < linkcount) {
-		strlcpy(buff + link[idxLink].zoneNameFromPrev,  link[idxLink].zonename, buffLen - link[idxLink].zoneNameFromPrev);
+    link_t l;
+    memcpy_P(&l, &link[idxLink], sizeof(l));
+    strlcpy(buff + l.zoneNameFromPrev,  l.zonename, buffLen - l.zoneNameFromPrev);
 		idxLink++;
 		return buff;
 	} else {
@@ -95,17 +99,21 @@ int FindTZName(const char *tzname)
   const int tzcount = sizeof(mtimezone)/sizeof(mtimezone[0]);
   const int linkcount = sizeof(link)/sizeof(link[0]);
 	for (int i=0; i < tzcount; i++) {
-		strlcpy(buff + mtimezone[i].zoneNameFromPrev,  mtimezone[i].zonename, sizeof(buff) - mtimezone[i].zoneNameFromPrev);
+    timezone_t l;
+    memcpy_P(&l, &mtimezone[i], sizeof(l));
+		strlcpy(buff + l.zoneNameFromPrev,  l.zonename, sizeof(buff) - l.zoneNameFromPrev);
 		if (!strcmp(buff, tzname)) return i;
 	}
 	for (int i=0; i < linkcount; i++) {
-		strlcpy(buff + link[i].zoneNameFromPrev,  link[i].zonename, sizeof(buff) - link[i].zoneNameFromPrev);
+    link_t l;
+    memcpy_P(&l, &link[i], sizeof(l));
+		strlcpy(buff + l.zoneNameFromPrev,  l.zonename, sizeof(buff) - l.zoneNameFromPrev);
 		if (!strcmp(buff, tzname)) return link[i].timezone;
 	}
 	return -1;
 }
 
-static uint16_t timezoneNum = 0; // Which timezone id are we presently handling?
+static timezone_t myTimezone;    // Which timezone are we in?
 static time_t utcOffsetSecs = 0; // Unadjusted UTC offset
 static bool useDSTRule = false;  // Does the current TZ need DST handling?
 static uint16_t dstYear = 1900;  // What year the cached computations below are falid for
@@ -125,8 +133,10 @@ void UpdateDSTInfo(time_t whenUTC)
 
 	ruleIdx = 0;
 	for (int i=0; i<ruleCount && ruleIdx < 2; i++) {
-		if (rules[i].name == mtimezone[timezoneNum].rule) {
-			memcpy(dstRule+ruleIdx, &rules[i], sizeof(rules[i]));
+    rule_t rule;
+    memcpy_P(&rule, &rules[i],sizeof(rule));
+		if (rule.name == myTimezone.rule) { //mtimezone[timezoneNum].rule) {
+			memcpy(dstRule+ruleIdx, &rule, sizeof(rule));
 			ruleIdx++;
 		}
 	}
@@ -304,22 +314,24 @@ char *AscTime(time_t whenUTC, bool use12Hr, bool useDMY, char *buff, int buffLen
 
 bool SetTZ(const char *tzName)
 {
-	timezoneNum = FindTZName(tzName);
+	int timezoneNum = FindTZName(tzName);
 	if (timezoneNum<0) timezoneNum = FindTZName("UTC"); // Default to UTC/GMT
 
+  memcpy_P(&myTimezone, &mtimezone[timezoneNum], sizeof(myTimezone));
+
 	// Store the UTC offset in seconds
-	utcOffsetSecs = abs(mtimezone[timezoneNum].gmtoffhr) * 3600 + mtimezone[timezoneNum].gmtoffmin;
-	if (mtimezone[timezoneNum].gmtoffhr < 0) utcOffsetSecs = -utcOffsetSecs;
+	utcOffsetSecs = abs(myTimezone.gmtoffhr) * 3600 + myTimezone.gmtoffmin;
+	if (myTimezone.gmtoffhr < 0) utcOffsetSecs = -utcOffsetSecs;
 
   // Store the timezone human readable string
-  strlcpy(timezoneStr, mtimezone[timezoneNum].formatstr, sizeof(timezoneStr));
+  strlcpy(timezoneStr, myTimezone.formatstr, sizeof(timezoneStr));
 
-	if (mtimezone[timezoneNum].rule == RULE_NONE) {
+  dstYear = 0; // Force it to fix on the 1st call
+	if (myTimezone.rule == RULE_NONE) {
 		useDSTRule = false;
 	} else {
 		// Calculate what UTC time we have to change and store it away
 		useDSTRule = true;
-		dstYear = 0; // Force it to fix on the 1st call
 	}
 }
 
