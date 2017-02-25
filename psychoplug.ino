@@ -37,7 +37,7 @@ bool isSetup = false;
 
 // Global way of writing out dynamic HTML to socket
 // snprintf guarantees a null termination
-#define WebPrintf(c, fmt, ...) { char webBuff[128]; snprintf_P(webBuff, sizeof(webBuff), PSTR(fmt), ## __VA_ARGS__); (c)->print(webBuff); }
+#define WebPrintf(c, fmt, ...) { char webBuff[192]; snprintf_P(webBuff, sizeof(webBuff), PSTR(fmt), ## __VA_ARGS__); (c)->print(webBuff); }
 
 // Web request line (URL, PARAMs parsed in-line)
 static char reqBuff[384];
@@ -679,11 +679,10 @@ void SendStatusHTML(WiFiClient *client)
   WebPrintf(client, "Current: %dmA (%dW @ %dV)<br>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
 
   WebPrintf(client, "<table border=\"1px\">\n");
-  WebPrintf(client, "<tr><th>#</th><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Time</th><th>Action</th><th>EDIT</th></tr>");
+  WebPrintf(client, "<tr><th>#</th><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Time</th><th>Action</th><th>EDIT</th></tr>\n");
   for (byte i=0; i<MAXEVENTS; i++) {
     WebPrintf(client, "<tr><td>%d.</td>", i+1);
     for (byte j=0; j<7; j++) {
-//      WebPrintf(client, "<td><input type=\"checkbox\" disabled%s></td>", (settings.event[i].dayMask & (1<<j))?" checked":"");
       WebPrintf(client, "<td>%s</td>", (settings.event[i].dayMask & (1<<j))?"[X]":"[&nbsp;]");
     }
     if (settings.use12hr) {
@@ -695,7 +694,7 @@ void SendStatusHTML(WiFiClient *client)
     WebPrintf(client, "<td><a href=\"edit.html?id=%d\">Edit</a></td></tr>\r\n", i);
   }
   WebPrintf(client, "</table><br>\n");
-  WebPrintf(client, "<a href=\"reconfig.html\">Change System Configuration</a><br\n");
+  WebPrintf(client, "<a href=\"reconfig.html\">Change System Configuration</a><br>\n");
   WebPrintf(client, "</body>\n");
 }
 
@@ -990,9 +989,9 @@ void HandleEditHTML(WiFiClient *client, char *params)
 
 void loop()
 {
-  static uint8_t cnt = 0;
+  static uint16_t cnt = 0;
   if (!cnt) LogPrintf("HeapFree=%d\n", ESP.getFreeHeap());
-  cnt++;
+  cnt = (cnt+1) % 2048;
   
   // Let the button toggle the relay always
   ManageButton();

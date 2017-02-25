@@ -24,6 +24,8 @@
 #include "psychoplug.h"
 #include "settings.h"
 #include "mqtt.h"
+#include "log.h"
+
 
 // Noisy current measurement, better than nothing I guess
 static int lastCurrentMa = 0;
@@ -83,6 +85,8 @@ static void ReadPowerMonitor()
     rawPwr[2] = ((uint32_t)d[8]<<24) | ((uint32_t)d[9]<<16) | ((uint32_t)d[10]<<8) | ((uint32_t)d[11]);
   }
 
+  LogPrintf("%12d(%08x), %12d(%08x), %12d(%08x)", rawPwr[0], rawPwr[0], rawPwr[1], rawPwr[1], rawPwr[2], rawPwr[2]);
+  LogPrintf("  --- %12d(%08x), %12d(%08x), %12d(%08x)\n", rawPwr[0]&0x7fffffff, rawPwr[0]&0x7fffffff, rawPwr[1&0x7fffffff], rawPwr[1]&0x7fffffff, rawPwr[2]&0x7fffffff, rawPwr[2]&0x7fffffff);
   // Current measurement via curve-fit from samples.  YMMV, but fits well for me
   // Needs Vin to get power (well, and PF, but that's more than we can measure)
   double x, y;
