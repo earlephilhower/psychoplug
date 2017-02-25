@@ -36,7 +36,7 @@ static MQTTClient mqttClient;
 // Callback for the MQTT library
 void messageReceived(String topic, String payload, char *bytes, unsigned int length)
 {
-  char t[128], p[32];
+  char t[64], p[32];
 
   (void)bytes;
   (void)length;
@@ -46,13 +46,13 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
   LogPrintf("MQTT: '%s'='%s'\n", t, p); 
 
   char topicStr[128];
-  snprintf(topicStr, 128, "%s/remotepower", settings.mqttTopic);
+  snprintf(topicStr, sizeof(topicStr), "%s/remotepower", settings.mqttTopic);
   if (!strcmp(topicStr, t)) {
-    if (!strcmp("on", p) || !strcmp("ON", p) || !strcmp("1",p))
+    if (!strcasecmp("on", p) || !strcmp("1",p))
       SetRelay(true);
-    else if (!strcmp("off", p) || !strcmp("OFF", p) || !strcmp("0",p))
+    else if (!strcasecmp("off", p) || !strcmp("0",p))
       SetRelay(false);
-    else if (!strcmp("toggle", p) || !strcmp("TOGGLE", p))
+    else if (!strcasecmp("toggle", p) )
       SetRelay(!GetRelay());
   }
 }
@@ -60,7 +60,7 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
 
 void StartMQTT()
 {
-  Log("Starting MQTT\n");
+  LogPrintf("Starting MQTT\n");
   LogPrintf("Free heap = %d\nConnecting MQTT...\n", ESP.getFreeHeap());
   if (settings.mqttEnable) {
     mqttClient.begin(settings.mqttHost, settings.mqttPort, settings.mqttSSL ? wifiMQTTSSL : wifiMQTT);
@@ -91,7 +91,7 @@ void StopMQTT()
 void MQTTPublish(const char *key, const char *value)
 {
   if (isSetup && settings.mqttEnable && mqttClient.connected()) {
-    char topic[128];
+    char topic[64];
     snprintf(topic, sizeof(topic), "%s/%s", settings.mqttTopic, key);
     mqttClient.publish(topic, value);
   }

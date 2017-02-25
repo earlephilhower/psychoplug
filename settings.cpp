@@ -31,7 +31,7 @@ Settings settings;
 
 void StartSettings()
 {
-  EEPROM.begin(4096);
+  EEPROM.begin(sizeof(settings)+2);
 }
 
 void StopSettings()
@@ -43,6 +43,8 @@ void StopSettings()
 bool LoadSettings(bool reset)
 {
   bool ok = false;
+
+  StartSettings();
   
   // Try and read from "EEPROM", if that fails use defaults
   byte *p = (byte *)&settings;
@@ -57,7 +59,7 @@ bool LoadSettings(bool reset)
   byte notCalcChk = ~calcChk;
 
   if ((chk != calcChk) || (notChk != notCalcChk) ||(settings.version != SETTINGSVERSION) || (reset)) {
-    Log("Setting checksum mismatch, generating default settings\n");
+    LogPrintf("Setting checksum mismatch, generating default settings\n");
     memset(&settings, 0, sizeof(settings));
     settings.version = SETTINGSVERSION;
     settings.ssid[0] = 0;
@@ -80,24 +82,31 @@ bool LoadSettings(bool reset)
     settings.voltage = 120;
     settings.mqttEnable = false;
     ok = false;
-    Log("Unable to restore settings from EEPROM\n");
+    LogPrintf("Unable to restore settings from EEPROM\n");
   } else {
-    Log("Settings restored from EEPROM\n");
+    LogPrintf("Settings restored from EEPROM\n");
     ok = true;
   }
+
+  StopSettings();
+
   return ok;
 }
 
 void SaveSettings()
 {
-  Log("Saving Settings\n");
+  LogPrintf("Saving Settings\n");
 
+  StartSettings();
+  
   byte *p = (byte *)&settings;
   for (unsigned int i=0; i<sizeof(settings); i++) EEPROM.write(i, *(p++));
   byte ck = CalcSettingsChecksum();
   EEPROM.write(sizeof(settings), ck);
   EEPROM.write(sizeof(settings)+1, ~ck);
   EEPROM.commit();
+
+  StopSettings();
 }
 
 static byte CalcSettingsChecksum()
