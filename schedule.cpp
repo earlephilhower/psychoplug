@@ -31,12 +31,11 @@ const char *actionString[] = { "None", "On", "Off", "Toggle", "Pulse Off", "Puls
 
 
 // Handle automated on/off simply on the assumption we don't lose any minutes
-static int lastHour = -1;
-static int lastMin = -1;
-static int lastDOW = -1;
+static char lastHour = -1;
+static char lastMin = -1;
+static char lastDOW = -1;
 void ManageSchedule()
-{
-  
+{ 
   // Can't run schedule if we don't know what the time is!
   if (timeStatus() == timeNotSet) return;
 

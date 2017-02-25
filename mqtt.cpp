@@ -45,7 +45,7 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
   payload.toCharArray(p, sizeof(p));
   LogPrintf("MQTT: '%s'='%s'\n", t, p); 
 
-  char topicStr[128];
+  char topicStr[64];
   snprintf(topicStr, sizeof(topicStr), "%s/remotepower", settings.mqttTopic);
   if (!strcmp(topicStr, t)) {
     if (!strcasecmp("on", p) || !strcmp("1",p))
@@ -66,7 +66,7 @@ void StartMQTT()
     mqttClient.begin(settings.mqttHost, settings.mqttPort, settings.mqttSSL ? wifiMQTTSSL : wifiMQTT);
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
     if (mqttClient.connected() ) {
-      char topic[128];
+      char topic[64];
       snprintf(topic, 128, "%s/remotepower", settings.mqttTopic);
       mqttClient.subscribe(topic);
     }

@@ -50,19 +50,19 @@ time_t mktime(struct tm *tm)
   time_t makeTime(tmElements_t &tm); // convert time elements into time_t
 }
 
-struct tm *gmtime(const time_t *timep)
+struct tm *gmtime_r(const time_t *timep, struct tm *tm)
 {
-  static struct tm tm;
+//  static struct tm tm;
   tmElements_t tme;
   breakTime(*timep, tme); // break time_t into elements
-  tm.tm_sec = tme.Second;
-  tm.tm_min = tme.Minute;
-  tm.tm_hour = tme.Hour;
-  tm.tm_wday = tme.Wday-1; // Sun=0 in tm, 1 in tme
-  tm.tm_mday = tme.Day;
-  tm.tm_mon = tme.Month;
-  tm.tm_year = tme.Year + 70; // 0=1900 in tm, 1970 in tme
-  return &tm;
+  tm->tm_sec = tme.Second;
+  tm->tm_min = tme.Minute;
+  tm->tm_hour = tme.Hour;
+  tm->tm_wday = tme.Wday-1; // Sun=0 in tm, 1 in tme
+  tm->tm_mday = tme.Day;
+  tm->tm_mon = tme.Month;
+  tm->tm_year = tme.Year + 70; // 0=1900 in tm, 1970 in tme
+  return tm;
 }
 
 char *GetNextTZ(bool reset, char *buff, char buffLen)
@@ -149,7 +149,9 @@ void UpdateDSTInfo(time_t whenUTC)
   strlcpy(dstString[0], dstRule[0].fmtstr, sizeof(dstString[0]));
   strlcpy(dstString[1], dstRule[1].fmtstr, sizeof(dstString[1]));
 
-	memcpy(&t, gmtime(&whenUTC), sizeof(t));
+	//memcpy(&t, gmtime(&whenUTC), sizeof(t));
+  gmtime_r(&whenUTC, &t);
+  
 	int curYear = 1900 + t.tm_year;
 	dstYear = curYear;
 
@@ -165,7 +167,8 @@ void UpdateDSTInfo(time_t whenUTC)
 		t.tm_sec = 0;
 		time_t at = mktime(&t);
 		// Fill in the wday, yday field
-		memcpy(&t, gmtime(&at), sizeof(t));
+		//memcpy(&t, gmtime(&at), sizeof(t));
+   gmtime_r(&at, &t);
 		// Now we have "t" which has the UTC time for day 1 of the month.
 		// Adjust to the proper day mechanically.  Could be optimized
 		switch (dstRule[i].daytrig) {
@@ -223,10 +226,12 @@ void UpdateDSTInfo(time_t whenUTC)
 				// Go to the next month and work backwards
 				while (t.tm_mon == dstRule[i].month) {
 					at += 7 * SECS_PER_DAY;
-					memcpy(&t, gmtime(&at), sizeof(t));
+					//memcpy(&t, gmtime(&at), sizeof(t));
+          gmtime_r(&at, &t);
 				}
 				at -= 7 * SECS_PER_DAY; // Back one week
-				memcpy(&t, gmtime(&at), sizeof(t));
+		//		memcpy(&t, gmtime(&at), sizeof(t));
+        gmtime_r(&at, &t);
 				break;
 		}
 		// Now at == t == day of the event
@@ -253,7 +258,8 @@ void UpdateDSTInfo(time_t whenUTC)
 				at -= otherdstoffsecs;
 				break;
 		}
-		memcpy(&t, gmtime(&at), sizeof(t));
+		//memcpy(&t, gmtime(&at), sizeof(t));
+    gmtime_r(&at, &t);
 		dstChangeAtUTC[i] = at;
 		dstOffsetSecs[i] = dstoffsecs;
 	}
@@ -262,7 +268,9 @@ void UpdateDSTInfo(time_t whenUTC)
 time_t LocalTime(time_t whenUTC)
 {
 	struct tm t;
-  memcpy(&t, gmtime(&whenUTC), sizeof(t));
+//  memcpy(&t, gmtime(&whenUTC), sizeof(t));
+  gmtime_r(&whenUTC, &t);
+  
 	if ((dstYear != t.tm_year + 1900) && useDSTRule) UpdateDSTInfo(whenUTC);
 	if (!useDSTRule) {
 		// Just UTC offset needed 
