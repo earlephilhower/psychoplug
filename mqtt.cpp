@@ -67,7 +67,7 @@ void StartMQTT()
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
     if (mqttClient.connected() ) {
       char topic[64];
-      snprintf(topic, 128, "%s/remotepower", settings.mqttTopic);
+      snprintf(topic, sizeof(topic), "%s/remotepower", settings.mqttTopic);
       mqttClient.subscribe(topic);
     }
   }
@@ -79,6 +79,15 @@ void ManageMQTT()
   // Only have MQTT loop if we're connected and configured
   if (settings.mqttEnable && mqttClient.connected()) {
     mqttClient.loop();
+    delay(10);
+  } else if (settings.mqttEnable && !mqttClient.connected()){
+    LogPrintf("MQTT disconnected, reconnecting\n");
+    mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
+    if (mqttClient.connected() ) {
+      char topic[64];
+      snprintf(topic, sizeof(topic), "%s/remotepower", settings.mqttTopic);
+      mqttClient.subscribe(topic);
+    }
     delay(10);
   }
 }

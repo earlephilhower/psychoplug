@@ -676,7 +676,7 @@ void SendStatusHTML(WiFiClient *client)
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, buff, sizeof(buff)));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
-  WebPrintf(client, "Current: %dmA (%dW @ %dV)<br>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
+//  WebPrintf(client, "Current: %dmA (%dW @ %dV)<br>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
 
   WebPrintf(client, "<table border=\"1px\">\n");
   WebPrintf(client, "<tr><th>#</th><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Time</th><th>Action</th><th>EDIT</th></tr>\n");
@@ -1025,35 +1025,41 @@ void loop()
     ManageMQTT();
     ManageSchedule();
     ManagePowerMonitor();
+
+    // Need to stop any mqtt connections during the web processing, only one SSL context available
+    bool saveMQTT = settings.mqttEnable;
+    settings.mqttEnable = false;
     
     WiFiClientSecure client = https.available();
-    if (!client) return;
-
-    if (WebReadRequest(&client, &url, &params, true)) {
-      if (IsIndexHTML(url)) {
-        SendStatusHTML(&client);
-      } else if (!strcmp("on.html", url)) {
-        SetRelay(true);
-        SendSuccessHTML(&client);
-      } else if (!strcmp("off.html", url)) {
-        SetRelay(false);
-        SendSuccessHTML(&client);
-      } else if (!strcmp(url, "hang.html")) {
-        SendResetHTML(&client);
-        Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
-      } else if (!strcmp("edit.html", url) && *params) {
-        HandleEditHTML(&client, params);
-      } else if (!strcmp("update.html", url) && *params) {
-        HandleUpdateSubmit(&client, params);
-      } else if (!strcmp("reconfig.html", url)) {
-        SendSetupHTML(&client);
-      } else if (!strcmp(url, "config.html") && *params) {
-        HandleConfigSubmit(&client, params);
-      } else {
-        WebError(&client, "404", NULL, "Not Found");
+    if (client) {
+      if (WebReadRequest(&client, &url, &params, true)) {
+        if (IsIndexHTML(url)) {
+          SendStatusHTML(&client);
+        } else if (!strcmp("on.html", url)) {
+          SetRelay(true);
+          SendSuccessHTML(&client);
+        } else if (!strcmp("off.html", url)) {
+          SetRelay(false);
+          SendSuccessHTML(&client);
+        } else if (!strcmp(url, "hang.html")) {
+          SendResetHTML(&client);
+          Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
+        } else if (!strcmp("edit.html", url) && *params) {
+          HandleEditHTML(&client, params);
+        } else if (!strcmp("update.html", url) && *params) {
+          HandleUpdateSubmit(&client, params);
+        } else if (!strcmp("reconfig.html", url)) {
+          SendSetupHTML(&client);
+        } else if (!strcmp(url, "config.html") && *params) {
+          HandleConfigSubmit(&client, params);
+        } else {
+          WebError(&client, "404", NULL, "Not Found");
+        }
       }
+      client.stop();
     }
-    client.stop();
+    settings.mqttEnable = saveMQTT;
+
   }
 }
 

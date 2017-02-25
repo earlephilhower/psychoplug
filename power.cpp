@@ -34,6 +34,8 @@ static int lastCurrentMa = 0;
 #define PIN_SCL  (0)
 
 
+// Unable to reliably read the power meter, remove it for now.
+#if 0
 static void ReadPowerMonitor();
 
 int GetCurrentMA()
@@ -96,3 +98,11 @@ static void ReadPowerMonitor()
   lastCurrentMa = (int)y;
 }
 
+#else
+
+int GetCurrentMA() { return 0; }
+void StartPowerMonitor() {}
+void ManagePowerMonitor() {}
+void StopPowerMonitor() {}
+
+#endif
