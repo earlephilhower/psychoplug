@@ -32,6 +32,7 @@
 static WiFiClient wifiMQTT;
 static WiFiClientSecure wifiMQTTSSL;
 static MQTTClient mqttClient;
+static bool mqttPause = false;
 
 // Callback for the MQTT library
 void messageReceived(String topic, String payload, char *bytes, unsigned int length)
@@ -70,12 +71,15 @@ void StartMQTT()
       snprintf(topic, sizeof(topic), "%s/remotepower", settings.mqttTopic);
       mqttClient.subscribe(topic);
     }
+    mqttPause = false;
   }
   LogPrintf("Free heap = %d after connection\n", ESP.getFreeHeap());
 }
 
 void ManageMQTT()
 {
+  if (mqttPause) return; // If we're paused, don't initiate ANYTHING
+  
   // Only have MQTT loop if we're connected and configured
   if (settings.mqttEnable && mqttClient.connected()) {
     mqttClient.loop();
@@ -92,6 +96,11 @@ void ManageMQTT()
   }
 }
 
+void PauseMQTT(bool pause)
+{
+  mqttPause = pause;
+}
+
 void StopMQTT()
 {
   
@@ -99,6 +108,8 @@ void StopMQTT()
 
 void MQTTPublish(const char *key, const char *value)
 {
+  if (mqttPause) return; // If we're paused, don't initiate ANYTHING
+    
   if (isSetup && settings.mqttEnable && mqttClient.connected()) {
     char topic[64];
     snprintf(topic, sizeof(topic), "%s/%s", settings.mqttTopic, key);
