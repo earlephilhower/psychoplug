@@ -171,9 +171,21 @@ void PrintSettings(WiFiClient *client)
   WebPrintf(client, "Admin Pass: %s<br>\n", "*HIDDEN*");
 }
 
-void WebError(WiFiClient *client, const char *ret, const char *headers, const char *body)
+void WebPrintError(WiFiClient *client, int code)
 {
-  WebPrintf(client, "HTTP/1.1 %s\r\n", ret);
+  switch(code) {
+    case 301: WebPrintf(client, "301 Moved Permanently"); break;
+    case 400: WebPrintf(client, "400 Bad Request"); break;
+    case 401: WebPrintf(client, "401 Unauthorized"); break;
+    case 404: WebPrintf(client, "404 Not Found"); break;
+    case 405: WebPrintf(client, "405 Method Not Allowed"); break;
+    default:  WebPrintf(client, "500 Server Error"); break;
+  }
+}
+
+void WebError(WiFiClient *client, int code, const char *headers)
+{
+  WebPrintf(client, "HTTP/1.1 %d\r\n", code);
   WebPrintf(client, "Server: PsychoPlug\r\n");
   //fprintf(fp, "Content-length: %d\r\n", strlen(errorPage));
   WebPrintf(client, "Content-type: text/html\r\n");
@@ -181,8 +193,12 @@ void WebError(WiFiClient *client, const char *ret, const char *headers, const ch
   WebPrintf(client, "Pragma: no-cache\r\n");
   WebPrintf(client, "Expires: 0\r\n");
   if (headers) WebPrintf(client, "%s", headers);
-  WebPrintf(client, "\r\n\r\n<html><head><title>%s</title>%s</head>\n", ret);
-  WebPrintf(client, "<body><h1>%s</h1><p>%s</p></body></html>\r\n", ret, body);
+  WebPrintf(client, "\r\n\r\n<html><head><title>");
+  WebPrintError(client, code);
+  WebPrintf(client, "</title>"ENCODING"</head>\n");
+  WebPrintf(client, "<body><h1>");
+  WebPrintError(client, code);
+  WebPrintf(client, "</h1></body></html>\r\n");
 }
 
 
@@ -214,7 +230,6 @@ void StartSetupAP()
   WiFi.softAP(ssid);
 
   LogPrintf("Waiting for connection\n");
-//  web.begin();
   https.begin();
   redirector.begin();
 }
@@ -245,11 +260,13 @@ void StartSTA()
   if (WiFi.status() != WL_CONNECTED) {
     Reset(); // Punt, maybe we're in a weird way.  Reboot and try it again
   }
-  //settings.mqttEnable = false;
+
+  IPAddress ip = WiFi.localIP();
+  LogPrintf("IP:%d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
+
   StartMQTT();
     
   // Start standard interface
-//  web.begin();
   https.begin();
   redirector.begin();
   StartNTP();
@@ -364,7 +381,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     bool matchUser = !strcmp(user, settings.uiUser);
     bool matchPass = VerifyPassword(pass);
     if (!authBuff[0] || !matchUser || !matchPass) {
-      WebError(client, "401 Unauthorized", "WWW-Authenticate: Basic realm=\"PsychoPlug\"", "Login required.");
+      WebError(client, 401, "WWW-Authenticate: Basic realm=\"PsychoPlug\"");
       return false;
     }
   }
@@ -410,7 +427,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     URLDecode(qp);
   } else {
     // Not a GET or POST, error
-    WebError(client, "405 Method Not Allowed", "Allow: GET, POST", "Only GET or POST requests supported.");
+    WebError(client, 405, "Allow: GET, POST");
     return false;
   }
 
@@ -860,7 +877,7 @@ void HandleUpdateSubmit(WiFiClient *client, char *params)
   
   if (hr==12 && ampm==0 && settings.use12hr) { hr = 0; }
   if (err) {
-    WebError(client, "400", NULL, "Bad Request");
+    WebError(client, 400, NULL);
   } else {
     // Update the entry, send refresh page to send back to index
     settings.event[id].dayMask = mask;
@@ -883,7 +900,7 @@ void HandleEditHTML(WiFiClient *client, char *params)
   if (id >=0 && id < MAXEVENTS) {
     SendEditHTML(client, id);
   } else {
-    WebError(client, "400", NULL, "Bad Request");
+    WebError(client, 400, NULL);
   }
 }
 
@@ -913,7 +930,7 @@ void loop()
       char newLoc[64];
       IPAddress ip = WiFi.localIP();
       snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/%s"), ip[0], ip[1], ip[2], ip[3], url[0]?url:"index.html");
-      WebError(&redir, "301 Moved Permanently", newLoc, "");
+      WebError(&redir, 301, newLoc);
       redir.stop();
     }
   } else if (!isSetup) {
@@ -926,10 +943,10 @@ void loop()
       } else if (!strcmp(url, "config.html") && *params) {
         HandleConfigSubmit(&client, params);
       } else {
-        WebError(&client, "404", NULL, "Not Found");
+        WebError(&client, 404, NULL);
       }
     } else {
-      WebError(&client, "400", NULL, "Bad Request");
+      WebError(&client, 400, NULL);
     }
     client.stop();
   } else {
@@ -972,7 +989,7 @@ void loop()
         } else if (!strcmp(url, "config.html") && *params) {
           HandleConfigSubmit(&client, params);
         } else {
-          WebError(&client, "404", NULL, "Not Found");
+          WebError(&client, 404, NULL);
         }
       }
       client.stop();
