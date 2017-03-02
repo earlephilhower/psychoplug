@@ -314,7 +314,7 @@ char *AscTime(time_t whenUTC, bool use12Hr, bool useDMY, char *buff, int buffLen
     else if (h<12) { ampm = "AM"; }
     else { h -= 12; ampm = "PM"; }
   }
-  snprintf(buff, buffLen, "%d:%02d:%02d%s %s, %d/%d/%d", h, m, s, ampm, tzID, useDMY?dy:mn, useDMY?mn:dy, yr);
+  snprintf_P(buff, buffLen, PSTR("%d:%02d:%02d%s %s, %d/%d/%d"), h, m, s, ampm, tzID, useDMY?dy:mn, useDMY?mn:dy, yr);
 
   return buff;
 }

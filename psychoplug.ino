@@ -116,7 +116,7 @@ static WiFiServerSecure https(443);
 // Return a *static* char * to an IP formatted string, so DO NOT USE MORE THAN ONCE PER LINE
 const char *FormatIP(const byte ip[4], char *buff, int buffLen)
 {
-  snprintf(buff, buffLen, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+  snprintf_P(buff, buffLen, PSTR("%d.%d.%d.%d"), ip[0], ip[1], ip[2], ip[3]);
   return buff;
 }
 
@@ -125,7 +125,7 @@ const char *FormatBool(bool b)
   return b ? "True" : "False";
 }
 
-const char *encoding = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/>\n";
+#define ENCODING "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/>\n"
 
 void PrintSettings(WiFiClient *client)
 {
@@ -181,7 +181,7 @@ void WebError(WiFiClient *client, const char *ret, const char *headers, const ch
   WebPrintf(client, "Pragma: no-cache\r\n");
   WebPrintf(client, "Expires: 0\r\n");
   if (headers) WebPrintf(client, "%s", headers);
-  WebPrintf(client, "\r\n\r\n<html><head><title>%s</title>%s</head>\n", ret, encoding);
+  WebPrintf(client, "\r\n\r\n<html><head><title>"ENCODING"</title>%s</head>\n", ret);
   WebPrintf(client, "<body><h1>%s</h1><p>%s</p></body></html>\r\n", ret, body);
 }
 
@@ -210,7 +210,7 @@ void StartSetupAP()
 
   isSetup = false;
   WiFi.macAddress(mac);
-  sprintf(ssid, "PSYCHOPLUG-%02X%02X%02X", mac[3], mac[4], mac[5]);
+  snprintf_P(ssid, sizeof(ssid), PSTR("PSYCHOPLUG-%02X%02X%02X"), mac[3], mac[4], mac[5]);
   WiFi.softAP(ssid);
 
   LogPrintf("Waiting for connection\n");
@@ -521,7 +521,7 @@ void SendSetupHTML(WiFiClient *client)
   char buff[16];
   
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>%s</head>\n", encoding);
+  WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>"ENCODING"</head>\n");
   WebPrintf(client, "<body><h1>PsychoPlug Setup</h1>\n");
   WebPrintf(client, "<form action=\"config.html\" method=\"POST\">\n");
 
@@ -574,7 +574,7 @@ void SendStatusHTML(WiFiClient *client)
   char buff[64];
   
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Status</title>%s</head>\n", encoding);
+  WebPrintf(client, "<html><head><title>PsychoPlug Status</title>"ENCODING"</head>\n");
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, buff, sizeof(buff)));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
@@ -604,7 +604,7 @@ void SendStatusHTML(WiFiClient *client)
 void SendEditHTML(WiFiClient *client, int id)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Rule Edit</title>%s</head>\n", encoding);
+  WebPrintf(client, "<html><head><title>PsychoPlug Rule Edit</title>"ENCODING"</head>\n");
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "<h1>Editing rule %d</h1>\n", id+1);
 
@@ -648,7 +648,7 @@ void SendEditHTML(WiFiClient *client, int id)
 void SendSuccessHTML(WiFiClient *client)
 {
   WebHeaders(client, "Refresh: 1; url=index.html\r\n");
-  WebPrintf(client, "<html><head><title>Success</title>%s</head><body><h1><a href=\"index.html\">Success.  Click here if not auto-refreshed</a></h1></body></html>\n", encoding);
+  WebPrintf(client, "<html><head><title>Success</title>"ENCODING"</head><body><h1><a href=\"index.html\">Success.  Click here if not auto-refreshed</a></h1></body></html>\n");
 }
 
 
@@ -780,7 +780,7 @@ void ParseSetupForm(char *params)
 void SendRebootHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>Setting Configuration</title>%s</head><body>\n", encoding);
+  WebPrintf(client, "<html><head><title>Setting Configuration</title>"ENCODING"</head><body>\n");
   WebPrintf(client, "<h1>Setting Configuration</h1>");
   WebPrintf(client, "<br>\n");
   PrintSettings(client);
@@ -792,7 +792,7 @@ void SendRebootHTML(WiFiClient *client)
 void SendResetHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>Resetting PsychoPlug</title>%s</head><body>\n", encoding);
+  WebPrintf(client, "<html><head><title>Resetting PsychoPlug</title>"ENCODING"</head><body>\n");
   WebPrintf(client, "<h1>Resetting the plug, please manually reconnect in 5 seconds.</h1>");
   WebPrintf(client, "</body>");
 }
@@ -912,7 +912,7 @@ void loop()
     if (WebReadRequest(&redir, &url, &params, false)) {
       char newLoc[64];
       IPAddress ip = WiFi.localIP();
-      snprintf(newLoc, sizeof(newLoc), "Location: https://%d.%d.%d.%d/%s", ip[0], ip[1], ip[2], ip[3], url[0]?url:"index.html");
+      snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/%s"), ip[0], ip[1], ip[2], ip[3], url[0]?url:"index.html");
       WebError(&redir, "301 Moved Permanently", newLoc, "");
       redir.stop();
     }

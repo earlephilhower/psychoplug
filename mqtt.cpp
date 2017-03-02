@@ -47,7 +47,7 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
   LogPrintf("MQTT: '%s'='%s'\n", t, p); 
 
   char topicStr[64];
-  snprintf(topicStr, sizeof(topicStr), "%s/remotepower", settings.mqttTopic);
+  snprintf_P(topicStr, sizeof(topicStr), PSTR("%s/remotepower"), settings.mqttTopic);
   if (!strcmp(topicStr, t)) {
     if (!strcasecmp("on", p) || !strcmp("1",p))
       SetRelay(true);
@@ -68,7 +68,7 @@ void StartMQTT()
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
     if (mqttClient.connected() ) {
       char topic[64];
-      snprintf(topic, sizeof(topic), "%s/remotepower", settings.mqttTopic);
+      snprintf_P(topic, sizeof(topic), PSTR("%s/remotepower"), settings.mqttTopic);
       mqttClient.subscribe(topic);
     }
     mqttPause = false;
@@ -89,7 +89,7 @@ void ManageMQTT()
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
     if (mqttClient.connected() ) {
       char topic[64];
-      snprintf(topic, sizeof(topic), "%s/remotepower", settings.mqttTopic);
+      snprintf_P(topic, sizeof(topic), PSTR("%s/remotepower"), settings.mqttTopic);
       mqttClient.subscribe(topic);
     }
     delay(10);
@@ -112,7 +112,7 @@ void MQTTPublish(const char *key, const char *value)
     
   if (isSetup && settings.mqttEnable && mqttClient.connected()) {
     char topic[64];
-    snprintf(topic, sizeof(topic), "%s/%s", settings.mqttTopic, key);
+    snprintf_P(topic, sizeof(topic), PSTR("%s/%s"), settings.mqttTopic, key);
     mqttClient.publish(topic, value);
   }
 }
@@ -120,7 +120,7 @@ void MQTTPublish(const char *key, const char *value)
 void MQTTPublishInt(const char *key, const int value)
 {
   char str[16];
-  snprintf(str, sizeof(str), "%d", value);
+  snprintf_P(str, sizeof(str), PSTR("%d"), value);
   MQTTPublish(key, str);
 }
 
