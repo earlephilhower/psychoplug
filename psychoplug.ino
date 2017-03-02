@@ -195,7 +195,7 @@ void WebError(WiFiClient *client, int code, const char *headers)
   if (headers) WebPrintf(client, "%s", headers);
   WebPrintf(client, "\r\n\r\n<html><head><title>");
   WebPrintError(client, code);
-  WebPrintf(client, "</title>"ENCODING"</head>\n");
+  WebPrintf(client, "</title>" ENCODING "</head>\n");
   WebPrintf(client, "<body><h1>");
   WebPrintError(client, code);
   WebPrintf(client, "</h1></body></html>\r\n");
@@ -538,7 +538,7 @@ void SendSetupHTML(WiFiClient *client)
   char buff[16];
   
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>"ENCODING"</head>\n");
+  WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>" ENCODING "</head>\n");
   WebPrintf(client, "<body><h1>PsychoPlug Setup</h1>\n");
   WebPrintf(client, "<form action=\"config.html\" method=\"POST\">\n");
 
@@ -591,7 +591,7 @@ void SendStatusHTML(WiFiClient *client)
   char buff[64];
   
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Status</title>"ENCODING"</head>\n");
+  WebPrintf(client, "<html><head><title>PsychoPlug Status</title>" ENCODING "</head>\n");
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, buff, sizeof(buff)));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
@@ -621,7 +621,7 @@ void SendStatusHTML(WiFiClient *client)
 void SendEditHTML(WiFiClient *client, int id)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Rule Edit</title>"ENCODING"</head>\n");
+  WebPrintf(client, "<html><head><title>PsychoPlug Rule Edit</title>" ENCODING "</head>\n");
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "<h1>Editing rule %d</h1>\n", id+1);
 
@@ -665,7 +665,7 @@ void SendEditHTML(WiFiClient *client, int id)
 void SendSuccessHTML(WiFiClient *client)
 {
   WebHeaders(client, "Refresh: 1; url=index.html\r\n");
-  WebPrintf(client, "<html><head><title>Success</title>"ENCODING"</head><body><h1><a href=\"index.html\">Success.  Click here if not auto-refreshed</a></h1></body></html>\n");
+  WebPrintf(client, "<html><head><title>Success</title>" ENCODING "</head><body><h1><a href=\"index.html\">Success.  Click here if not auto-refreshed</a></h1></body></html>\n");
 }
 
 
@@ -797,7 +797,7 @@ void ParseSetupForm(char *params)
 void SendRebootHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>Setting Configuration</title>"ENCODING"</head><body>\n");
+  WebPrintf(client, "<html><head><title>Setting Configuration</title>" ENCODING "</head><body>\n");
   WebPrintf(client, "<h1>Setting Configuration</h1>");
   WebPrintf(client, "<br>\n");
   PrintSettings(client);
@@ -809,7 +809,7 @@ void SendRebootHTML(WiFiClient *client)
 void SendResetHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>Resetting PsychoPlug</title>"ENCODING"</head><body>\n");
+  WebPrintf(client, "<html><head><title>Resetting PsychoPlug</title>" ENCODING "</head><body>\n");
   WebPrintf(client, "<h1>Resetting the plug, please manually reconnect in 5 seconds.</h1>");
   WebPrintf(client, "</body>");
 }
