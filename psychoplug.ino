@@ -181,7 +181,7 @@ void WebError(WiFiClient *client, const char *ret, const char *headers, const ch
   WebPrintf(client, "Pragma: no-cache\r\n");
   WebPrintf(client, "Expires: 0\r\n");
   if (headers) WebPrintf(client, "%s", headers);
-  WebPrintf(client, "\r\n\r\n<html><head><title>"ENCODING"</title>%s</head>\n", ret);
+  WebPrintf(client, "\r\n\r\n<html><head><title>%s</title>%s</head>\n", ret);
   WebPrintf(client, "<body><h1>%s</h1><p>%s</p></body></html>\r\n", ret, body);
 }
 
