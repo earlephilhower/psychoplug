@@ -29,6 +29,23 @@
 
 const char *actionString[] = { "None", "On", "Off", "Toggle", "Pulse Off", "Pulse On" };
 
+void PerformAction(int action)
+{
+  if (action != ACTION_NONE) {
+    MQTTPublish("event", actionString[action]);
+  }
+  
+  switch (action) {
+    case ACTION_NONE: break;
+    case ACTION_ON: SetRelay(true); break;
+    case ACTION_OFF: SetRelay(false); break;
+    case ACTION_TOGGLE: SetRelay(!GetRelay()); break;
+    case ACTION_PULSEOFF: SetRelay(false); delay(500); SetRelay(true); break;
+    case ACTION_PULSEON: SetRelay(true); delay(500); SetRelay(false); break;
+  }
+  
+}
+
 
 // Handle automated on/off simply on the assumption we don't lose any minutes
 static char lastHour = -1;
@@ -70,18 +87,7 @@ void ManageSchedule()
       }
     }
 
-    if (action != ACTION_NONE) {
-      MQTTPublish("scheduledevent", actionString[action]);
-    }
-
-    switch (action) {
-      case ACTION_NONE: break;
-      case ACTION_ON: SetRelay(true); break;
-      case ACTION_OFF: SetRelay(false); break;
-      case ACTION_TOGGLE: SetRelay(!GetRelay()); break;
-      case ACTION_PULSEOFF: SetRelay(false); delay(500); SetRelay(true); break;
-      case ACTION_PULSEON: SetRelay(true); delay(500); SetRelay(false); break;
-    }
+    PerformAction(action);
 
     lastHour = hour(t);
     lastMin = minute(t);

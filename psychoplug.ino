@@ -946,10 +946,19 @@ void loop()
         if (IsIndexHTML(url)) {
           SendStatusHTML(&client);
         } else if (!strcmp("on.html", url)) {
-          SetRelay(true);
+          PerformAction(ACTION_ON);
           SendSuccessHTML(&client);
         } else if (!strcmp("off.html", url)) {
-          SetRelay(false);
+          PerformAction(ACTION_OFF);
+          SendSuccessHTML(&client);
+        } else if (!strcmp("toggle.html", url)) {
+          PerformAction(ACTION_TOGGLE);
+          SendSuccessHTML(&client);
+        } else if (!strcmp("pulseoff.html", url)) {
+          PerformAction(ACTION_PULSEOFF);
+          SendSuccessHTML(&client);
+        } else if (!strcmp("pulseon.html", url)) {
+          PerformAction(ACTION_PULSEON);
           SendSuccessHTML(&client);
         } else if (!strcmp(url, "hang.html")) {
           SendResetHTML(&client);

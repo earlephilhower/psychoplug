@@ -107,8 +107,11 @@ To reconfigure in case of lost password you can hold the power button down while
 ## Web CGI control
 
 Simple web applications can be used to control the state of the outlet (be sure to use authentication!):
-	wget --user=username --password=mypass "http://..../off.html"
-	wget --user=username --password=mypass "http://..../on.html"
+	wget --user=username --password=mypass "https://..../off.html"
+	wget --user=username --password=mypass "https://..../on.html"
+	wget --user=username --password=mypass "https://..../toggle.html"
+	wget --user=username --password=mypass "https://..../pulseoff.html"
+	wget --user=username --password=mypass "https://..../pulseon.html"
 
 
 ## MQTT
@@ -119,7 +122,7 @@ Both SSL encrypted and unencrypted MQTT connections are supported.  Be sure to u
 
 	.../button (press,release) => When the button is physically pressed or released on the plug
 	.../powerstate (0,1) => When the controlled appliance is turned off or on
-	.../scheduledevent => When an event fires, records the event type in text (Off, On, Toggle, Pulse Low, Pulse High)
+	.../event => When an event fires, records the event type in text (Off, On, Toggle, Pulse Low, Pulse High)
 	.../powerma => Current in mA reported every 10 seconds.  Very noisy, don't put too much faith in it in my experience.
 
 ### MQTT topics subscribed

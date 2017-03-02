@@ -41,6 +41,7 @@ typedef struct {
 #define ACTION_PULSEON  (5)
 #define ACTION_MAX      (5)
 extern const char *actionString[];
+extern void PerformAction(int action);
 
 
 // Handle scheduled operations
