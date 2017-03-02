@@ -19,6 +19,8 @@
 */
 
 
+// Unable to reliably read the power meter, remove it for now.
+#if 0
 #include <Arduino.h>
 #include <Wire.h>
 #include "psychoplug.h"
@@ -34,8 +36,6 @@ static int lastCurrentMa = 0;
 #define PIN_SCL  (0)
 
 
-// Unable to reliably read the power meter, remove it for now.
-#if 0
 static void ReadPowerMonitor();
 
 int GetCurrentMA()
