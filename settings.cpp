@@ -71,9 +71,9 @@ bool LoadSettings(bool reset)
     memset(settings.gateway, 0, 4);
     memset(settings.netmask, 0, 4);
     memset(settings.logsvr, 0, 4);
-    strcpy(settings.ntp, "us.pool.ntp.org");
-    strcpy(settings.uiUser, "admin");
-    strcpy(settings.timezone, "America/Los_Angeles");
+    strcpy_P(settings.ntp, PSTR("us.pool.ntp.org"));
+    strcpy_P(settings.uiUser, PSTR("admin"));
+    strcpy_P(settings.timezone, PSTR("America/Los_Angeles"));
     settings.use12hr = true;
     settings.usedmy = false;
     HashPassword("admin"); // This will set settings.uiPassEnc

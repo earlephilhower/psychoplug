@@ -22,7 +22,7 @@
 #define _relay_h
 
 // Initializes relay control pins (relay state undefined)
-void StartRelay();
+void StartRelay(bool state);
 
 // Sets the relay on or off and handles any logging required
 void SetRelay(bool on);

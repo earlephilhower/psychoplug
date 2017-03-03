@@ -49,11 +49,11 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
   char topicStr[64];
   snprintf_P(topicStr, sizeof(topicStr), PSTR("%s/remotepower"), settings.mqttTopic);
   if (!strcmp(topicStr, t)) {
-    if (!strcasecmp("on", p) || !strcmp("1",p))
+    if (!strcasecmp_P(p, PSTR("on")) || !strcmp_P(p, PSTR("1")))
       SetRelay(true);
-    else if (!strcasecmp("off", p) || !strcmp("0",p))
+    else if (!strcasecmp_P(p, PSTR("off")) || !strcmp_P(p, PSTR("0")))
       SetRelay(false);
-    else if (!strcasecmp("toggle", p) )
+    else if (!strcasecmp_P(p, PSTR("toggle")) )
       SetRelay(!GetRelay());
   }
 }

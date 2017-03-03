@@ -364,7 +364,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     client->read(&newline, 1); // Get rid of \n
     hlen = (byte)client->readBytesUntil('\r', hdrBuff, sizeof(hdrBuff)-1);
     hdrBuff[hlen] = 0;
-    if (!strncmp("Authorization: Basic ", hdrBuff, 21)) {
+    if (!strncmp_P(hdrBuff, PSTR("Authorization: Basic "), 21)) {
       strcpy(authBuff, hdrBuff);
     }
   } while (hlen > 0);
@@ -463,7 +463,7 @@ bool ParseParam(char **paramStr, char **name, char **value)
 bool IsIndexHTML(const char *url)
 {
   if (!url) return false;
-  if (*url==0 || !strcmp("/", url) || !strcmp("/index.html", url) || !strcmp("index.html", url)) return true;
+  if (*url==0 || !strcmp_P(url, PSTR("/")) || !strcmp_P(url, PSTR("/index.html")) || !strcmp_P(url, PSTR("index.html"))) return true;
   else return false;
 }
 
@@ -678,8 +678,7 @@ void setup()
   delay(10);
 
   LogPrintf("Settings size=%d\n", sizeof(settings));
-  //StartSettings();
-  StartRelay();
+  
   StartButton();
   StartLED();
   StartPowerMonitor();
@@ -687,7 +686,7 @@ void setup()
   LogPrintf("Loading Settings\n");
   
   bool ok = LoadSettings(RawButton());
-  SetRelay(settings.onAfterPFail?true:false); 
+  StartRelay(settings.onAfterPFail?true:false);
 
   // Load our certificate and key from FLASH before we start
   https.setRSAKey(rsakey, sizeof(rsakey));
@@ -786,7 +785,7 @@ void ParseSetupForm(char *params)
     ParamText("uiuser", settings.uiUser);
     char tempPass[64];
     ParamText("uipass", tempPass);
-    if (strcmp("*****", tempPass)) {
+    if (strcmp_P(tempPass, PSTR("*****"))) {
       // Was changed, regenerate salt and store it
       HashPassword(tempPass); // This will set settings.uiPassEnc
     }
@@ -852,15 +851,19 @@ void HandleUpdateSubmit(WiFiClient *client, char *params)
     ParamInt("hr", hr);
     ParamInt("mn", mn);
     if (settings.use12hr) {
-      if (!strcmp(namePtr, "ampm")) { if (!strcmp("AM", valPtr)) ampm=0; else if (!strcmp("PM", valPtr)) ampm=1; }
+      if (!strcmp_P(namePtr, PSTR("ampm"))) {
+        if (!strcmp_P(valPtr, PSTR("AM"))) ampm=0;
+        else ampm=1;
+      }
     } else {
        ampm = 0;
     }
-    if (!strcmp(namePtr, "action")) {
-      for (int i=0; i<=ACTION_MAX; i++) if (!strcmp(valPtr, actionString[i])) action = i;
+    if (!strcmp_P(namePtr, PSTR("action"))) {
+      for (int i=0; i<=ACTION_MAX; i++)
+        if (!strcmp(valPtr, actionString[i])) action = i;
     }
     if (namePtr[0]>='a' && namePtr[0]<='g' && namePtr[1]==0) {
-      if (!strcmp(valPtr, "on")) mask |= 1<<(namePtr[0]-'a');
+      if (!strcmp_P(valPtr, PSTR("on"))) mask |= 1<<(namePtr[0]-'a');
     }
   }
   bool err = false;
@@ -940,7 +943,7 @@ void loop()
     if (WebReadRequest(&client, &url, &params, false)) {
       if (IsIndexHTML(url)) {
         SendSetupHTML(&client);
-      } else if (!strcmp(url, "config.html") && *params) {
+      } else if (!strcmp_P(url, PSTR("config.html")) && *params) {
         HandleConfigSubmit(&client, params);
       } else {
         WebError(&client, 404, NULL);
@@ -962,31 +965,31 @@ void loop()
       if (WebReadRequest(&client, &url, &params, true)) {
         if (IsIndexHTML(url)) {
           SendStatusHTML(&client);
-        } else if (!strcmp("on.html", url)) {
+        } else if (!strcmp_P(url, PSTR("on.html"))) {
           PerformAction(ACTION_ON);
           SendSuccessHTML(&client);
-        } else if (!strcmp("off.html", url)) {
+        } else if (!strcmp_P(url, PSTR("off.html"))) {
           PerformAction(ACTION_OFF);
           SendSuccessHTML(&client);
-        } else if (!strcmp("toggle.html", url)) {
+        } else if (!strcmp_P(url, PSTR("toggle.html"))) {
           PerformAction(ACTION_TOGGLE);
           SendSuccessHTML(&client);
-        } else if (!strcmp("pulseoff.html", url)) {
+        } else if (!strcmp_P(url, PSTR("pulseoff.html"))) {
           PerformAction(ACTION_PULSEOFF);
           SendSuccessHTML(&client);
-        } else if (!strcmp("pulseon.html", url)) {
+        } else if (!strcmp_P(url, PSTR("pulseon.html"))) {
           PerformAction(ACTION_PULSEON);
           SendSuccessHTML(&client);
-        } else if (!strcmp(url, "hang.html")) {
+        } else if (!strcmp_P(url, PSTR("hang.html"))) {
           SendResetHTML(&client);
           Reset(); // Restarting safer than trying to change wifi/mqtt/etc.
-        } else if (!strcmp("edit.html", url) && *params) {
+        } else if (!strcmp_P(url, PSTR("edit.html")) && *params) {
           HandleEditHTML(&client, params);
-        } else if (!strcmp("update.html", url) && *params) {
+        } else if (!strcmp_P(url, PSTR("update.html")) && *params) {
           HandleUpdateSubmit(&client, params);
-        } else if (!strcmp("reconfig.html", url)) {
+        } else if (!strcmp_P(url, PSTR("reconfig.html"))) {
           SendSetupHTML(&client);
-        } else if (!strcmp(url, "config.html") && *params) {
+        } else if (!strcmp_P(url, PSTR("config.html")) && *params) {
           HandleConfigSubmit(&client, params);
         } else {
           WebError(&client, 404, NULL);

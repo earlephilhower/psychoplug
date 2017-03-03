@@ -27,16 +27,16 @@
 
 
 // Initializes relay control pins (relay state undefined)
-void StartRelay()
+void StartRelay(bool state)
 {
-  SetRelay(false);
+  SetRelay(state);
   pinMode(PIN_RELAY, OUTPUT);
 }
 
 // Sets the relay on or off and handles any logging required
 void SetRelay(bool on)
 {
-  digitalWrite(PIN_RELAY, on ? HIGH:LOW ); //HIGH : LOW);
+  digitalWrite(PIN_RELAY, on ? HIGH:LOW );
   MQTTPublishInt("powerstate", on ? 1 : 0);
 }
 
