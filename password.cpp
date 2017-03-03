@@ -36,27 +36,27 @@ void HashPassword(const char *pass)
 
   // Now catenate the hash and raw password to temp storage
   char raw[128];
-  memset(raw, 0, 128);
+  memset(raw, 0, sizeof(raw));
   memcpy(raw, settings.uiSalt, sizeof(settings.uiSalt));
   strncpy(raw+sizeof(settings.uiSalt), pass, 64);
   int len = strnlen(pass, 63)+1;
   sha1((uint8_t*)raw, sizeof(settings.uiSalt)+len, (uint8_t*)settings.uiPassEnc);
-  memset(raw, 0, 128); // Get rid of plaintext temp copy 
+  memset(raw, 0, sizeof(raw)); // Get rid of plaintext temp copy 
 }
 
 bool VerifyPassword(char *pass)
 {
   // Now catenate the hash and raw password to temp storage
   char raw[128];
-  memset(raw, 0, 128);
+  memset(raw, 0, sizeof(raw));
   memcpy(raw, settings.uiSalt, sizeof(settings.uiSalt));
   strncpy(raw+sizeof(settings.uiSalt), pass, 64);
   int len = strnlen(pass, 63)+1;
   while (*pass) { *(pass++) = 0; } // clear out sent-in 
-  char *dest[20];
+  char dest[20];
   sha1((uint8_t*)raw, sizeof(settings.uiSalt)+len, (uint8_t*)dest);
-  memset(raw, 0, 128);
-  if (memcmp(settings.uiPassEnc, dest, 20)) return false;
+  memset(raw, 0, sizeof(raw));
+  if (memcmp(settings.uiPassEnc, dest, sizeof(dest))) return false;
   return true;
 }
 
