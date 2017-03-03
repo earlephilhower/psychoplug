@@ -79,7 +79,7 @@ bool LoadSettings(bool reset)
     HashPassword("admin"); // This will set settings.uiPassEnc
     memset(settings.logsvr, 0, 4); 
     settings.onAfterPFail = false;
-    settings.voltage = 120;
+//    settings.voltage = 120;
     settings.mqttEnable = false;
     ok = false;
     LogPrintf("Unable to restore settings from EEPROM\n");

@@ -153,7 +153,7 @@ void PrintSettings(WiFiClient *client)
   WebPrintf(client, "DD/MM/YY date format: %s<br>\n", FormatBool(settings.usedmy));
   
   WebPrintf(client, "<br><h1>Power Settings</h1>\n");
-  WebPrintf(client, "System Voltage: %d<br>\n", settings.voltage);
+//  WebPrintf(client, "System Voltage: %d<br>\n", settings.voltage);
   WebPrintf(client, "On after power failure: %s<br>\n", FormatBool(settings.onAfterPFail));
 
   WebPrintf(client, "<br><H1>MQTT</h1>\n");
@@ -561,7 +561,7 @@ void SendSetupHTML(WiFiClient *client)
   WebFormCheckbox(client, "DD/MM/YY Date Format", "usedmy", settings.usedmy, true);
 
   WebPrintf(client, "<br><h1>Power</h1>\n");
-  WebFormText(client, "Mains Voltage", "voltage", settings.voltage, true);
+  //WebFormText(client, "Mains Voltage", "voltage", settings.voltage, true);
   WebFormCheckbox(client, "Start powered up after power loss", "onafterpfail", settings.onAfterPFail, true);
 
   WebPrintf(client, "<br><H1>MQTT</h1>\n");
@@ -772,10 +772,10 @@ void ParseSetupForm(char *params)
     ParamCheckbox("mqttEnable", settings.mqttEnable);
     ParamText("mqtthost", settings.mqttHost);
     ParamInt("mqttport", settings.mqttPort);
-    int v;
-    ParamInt("voltage", v);
-    if ((v<80) || (v>255)) v=120; // Sanity-check
-    settings.voltage = v;
+//    int v;
+//    ParamInt("voltage", v);
+//    if ((v<80) || (v>255)) v=120; // Sanity-check
+//    settings.voltage = v;
     ParamCheckbox("mqttssl", settings.mqttSSL);
     ParamText("mqtttopic", settings.mqttTopic);
     ParamText("mqttclientid", settings.mqttClientID);
@@ -932,6 +932,7 @@ void loop()
     if (WebReadRequest(&redir, &url, &params, false)) {
       char newLoc[64];
       IPAddress ip = WiFi.localIP();
+      if (!isSetup) ip = { 192, 168, 4, 1 };
       snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/%s"), ip[0], ip[1], ip[2], ip[3], url[0]?url:"index.html");
       WebError(&redir, 301, newLoc);
       redir.stop();

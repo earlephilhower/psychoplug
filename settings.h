@@ -42,7 +42,7 @@ typedef struct {
   char timezone[32];
   
   bool onAfterPFail;
-  byte voltage;
+//  byte voltage;
   
   // MQTT Configuration
   bool mqttEnable;
