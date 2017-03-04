@@ -38,6 +38,7 @@ bool isSetup = false;
 // Global way of writing out dynamic HTML to socket
 // snprintf guarantees a null termination
 #define WebPrintf(c, fmt, ...) { char webBuff[192]; snprintf_P(webBuff, sizeof(webBuff), PSTR(fmt), ## __VA_ARGS__); (c)->print(webBuff); }
+#define WebPrintfPSTR(c, fmt, ...) { char webBuff[192]; snprintf_P(webBuff, sizeof(webBuff), (fmt), ## __VA_ARGS__); (c)->print(webBuff); }
 
 // Web request line (URL, PARAMs parsed in-line)
 static char reqBuff[384];
@@ -125,6 +126,8 @@ const char *FormatBool(bool b)
   return b ? "True" : "False";
 }
 
+
+#define DOCTYPE "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">"
 #define ENCODING "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/>\n"
 
 void PrintSettings(WiFiClient *client)
@@ -168,7 +171,7 @@ void PrintSettings(WiFiClient *client)
 
   WebPrintf(client, "<br><h1>Web UI</h1>\n");
   WebPrintf(client, "Admin User: %s<br>\n", settings.uiUser);
-  WebPrintf(client, "Admin Pass: %s<br>\n", "*HIDDEN*");
+  WebPrintf(client, "Admin Pass: *HIDDEN*<br>\n");
 }
 
 void WebPrintError(WiFiClient *client, int code)
@@ -192,8 +195,16 @@ void WebError(WiFiClient *client, int code, const char *headers)
   WebPrintf(client, "Cache-Control: no-cache, no-store, must-revalidate\r\n");
   WebPrintf(client, "Pragma: no-cache\r\n");
   WebPrintf(client, "Expires: 0\r\n");
-  if (headers) WebPrintf(client, "%s", headers);
-  WebPrintf(client, "\r\n\r\n<html><head><title>");
+  if (headers) {
+    if ((unsigned int)headers < 0x40000000) {
+      WebPrintf(client, "%s", headers);
+    } else {
+      WebPrintfPSTR(client, headers);
+    }
+  }
+  WebPrintf(client, "\r\n\r\n");
+  WebPrintf(client, DOCTYPE);
+  WebPrintf(client, "<html><head><title>");
   WebPrintError(client, code);
   WebPrintf(client, "</title>" ENCODING "</head>\n");
   WebPrintf(client, "<body><h1>");
@@ -203,7 +214,7 @@ void WebError(WiFiClient *client, int code, const char *headers)
 
 
 
-void WebHeaders(WiFiClient *client, const char *headers)
+void WebHeaders(WiFiClient *client, PGM_P /*const char **/headers)
 {
   WebPrintf(client, "HTTP/1.1 200 OK\r\n");
   WebPrintf(client, "Server: PsychoPlug\r\n");
@@ -211,7 +222,9 @@ void WebHeaders(WiFiClient *client, const char *headers)
   WebPrintf(client, "Cache-Control: no-cache, no-store, must-revalidate\r\n");
   WebPrintf(client, "Pragma: no-cache\r\n");
   WebPrintf(client, "Expires: 0\r\n");
-  if (headers) WebPrintf(client, "%s\r\n", headers);
+  if (headers) {
+    WebPrintfPSTR(client, headers);
+  }
   WebPrintf(client, "\r\n");
 }
 
@@ -225,9 +238,10 @@ void MakeSSID(char *ssid, int len)
 
 void StartSetupAP()
 {
-  char ssid[16];
+  char ssid[32];
 
   LogPrintf("Starting Setup AP Mode\n");
+  WiFi.mode(WIFI_AP);
 
   isSetup = false;
   MakeSSID(ssid, sizeof(ssid));
@@ -241,6 +255,7 @@ void StartSetupAP()
 void StartSTA()
 {
   LogPrintf("Starting STA Mode\n");
+  WiFi.mode(WIFI_STA);
   
   if (settings.hostname[0])
     WiFi.hostname(settings.hostname);
@@ -385,7 +400,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     bool matchUser = !strcmp(user, settings.uiUser);
     bool matchPass = VerifyPassword(pass);
     if (!authBuff[0] || !matchUser || !matchPass) {
-      WebError(client, 401, "WWW-Authenticate: Basic realm=\"PsychoPlug\"");
+      WebError(client, 401, PSTR("WWW-Authenticate: Basic realm=\"PsychoPlug\""));
       return false;
     }
   }
@@ -431,7 +446,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     URLDecode(qp);
   } else {
     // Not a GET or POST, error
-    WebError(client, 405, "Allow: GET, POST");
+    WebError(client, 405, PSTR("Allow: GET, POST"));
     return false;
   }
 
@@ -471,27 +486,33 @@ bool IsIndexHTML(const char *url)
   else return false;
 }
 
-void WebFormText(WiFiClient *client, const char *label, const char *name, const char *value, bool enabled)
+void WebFormText(WiFiClient *client, /*const char **/ PGM_P label, const char *name, const char *value, bool enabled)
 {
-  WebPrintf(client, "%s: <input type=\"text\" name=\"%s\" id=\"%s\" value=\"%s\" %s><br>\n", label, name, name, value, !enabled?"disabled":"");
+  WebPrintfPSTR(client, label);
+  WebPrintf(client, ": <input type=\"text\" name=\"%s\" id=\"%s\" value=\"%s\" %s><br>\n", name, name, value, !enabled?"disabled":"");
 }
-void WebFormText(WiFiClient *client, const char *label, const char *name, const int value, bool enabled)
+void WebFormText(WiFiClient *client, /*const char **/ PGM_P label, const char *name, const int value, bool enabled)
 {
-  WebPrintf(client, "%s: <input type=\"text\" name=\"%s\" id=\"%s\" value=\"%d\" %s><br>\n", label, name, name, value, !enabled?"disabled":"");
+  WebPrintfPSTR(client, label);
+  WebPrintf(client, ": <input type=\"text\" name=\"%s\" id=\"%s\" value=\"%d\" %s><br>\n", name, name, value, !enabled?"disabled":"");
 }
-void WebFormCheckbox(WiFiClient *client, const char *label, const char *name, bool checked, bool enabled)
+void WebFormCheckbox(WiFiClient *client, /*const char **/ PGM_P label, const char *name, bool checked, bool enabled)
 {
-  WebPrintf(client, "<input type=\"checkbox\" name=\"%s\" id=\"%s\" %s %s> %s<br>\n", name, name, checked?"checked":"", !enabled?"disabled":"", label);
+  WebPrintf(client, "<input type=\"checkbox\" name=\"%s\" id=\"%s\" %s %s> ", name, name, checked?"checked":"", !enabled?"disabled":"");
+  WebPrintfPSTR(client, label);
+  WebPrintf(client, "<br>\n");
 }
-void WebFormCheckboxDisabler(WiFiClient *client, const char *label, const char *name, bool invert, bool checked, bool enabled, const char *ids[])
+void WebFormCheckboxDisabler(WiFiClient *client, PGM_P /*const char **/label, const char *name, bool invert, bool checked, bool enabled, const char *ids[])
 {
-  WebPrintf(client,"<input type=\"checkbox\" name=\"%s\" id=\"%s\" onclick=\"", name, name);
+  WebPrintf(client,"<input type=\"checkbox\" name=\"%s\" id=\"%s\" onclick=\"", name,name);
   if (invert) WebPrintf(client, "var x = true; if (this.checked) { x = false; }\n")
   else WebPrintf(client, "var x = false; if (this.checked) { x = true; }\n");
   for (byte i=0; ids[i][0]; i++ ) {
     WebPrintf(client, "document.getElementById('%s').disabled = x;\n", ids[i]);
   }
-  WebPrintf(client, "\" %s %s> %s<br>\n", checked?"checked":"", !enabled?"disabled":"", label);
+  WebPrintf(client, "\" %s %s> ", checked?"checked":"", !enabled?"disabled":"")
+  WebPrintfPSTR(client, label);
+  WebPrintf(client, "<br>\n");
 }
 
 // We do the sort in the browser because it has more memory than us. :(
@@ -502,7 +523,7 @@ void WebTimezonePicker(WiFiClient *client)
   char str[64];
   while ( GetNextTZ(reset, str, sizeof(str)) ) {
       reset = false;
-      WebPrintf(client, "<option value=\"%s\"%s>%s</option>\n", str, !strcmp(str, settings.timezone)?" selected":"", str);
+      WebPrintf(client, "<option value=\"%s\" %s>%s</option>\n", str, !strcmp(str, settings.timezone)?"selected":"", str);
   }
   WebPrintf(client, "</select><br>\n");
 
@@ -542,46 +563,47 @@ void SendSetupHTML(WiFiClient *client)
   char buff[16];
   
   WebHeaders(client, NULL);
+  WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>" ENCODING "</head>\n");
   WebPrintf(client, "<body><h1>PsychoPlug Setup</h1>\n");
   WebPrintf(client, "<form action=\"config.html\" method=\"POST\">\n");
 
   WebPrintf(client, "<br><h1>WiFi Network</h1>\n");
-  WebFormText(client, "SSID", "ssid", settings.ssid, true);
-  WebFormText(client, "Password", "pass", settings.psk, true);
-  WebFormText(client, "Hostname", "hostname", settings.hostname, true);
+  WebFormText(client, PSTR("SSID"), "ssid", settings.ssid, true);
+  WebFormText(client, PSTR("Password"), "pass", settings.psk, true);
+  WebFormText(client, PSTR("Hostname"), "hostname", settings.hostname, true);
   const char *ary1[] = {"ip", "netmask", "gw", "dns", ""};
-  WebFormCheckboxDisabler(client, "DHCP Networking", "usedhcp", false, settings.useDHCP, true, ary1 );
-  WebFormText(client, "IP", "ip", FormatIP(settings.ip, buff, sizeof(buff)), !settings.useDHCP);
-  WebFormText(client, "Netmask", "netmask", FormatIP(settings.netmask, buff, sizeof(buff)), !settings.useDHCP);
-  WebFormText(client, "Gateway", "gw", FormatIP(settings.gateway, buff, sizeof(buff)), !settings.useDHCP);
-  WebFormText(client, "DNS", "dns", FormatIP(settings.dns, buff, sizeof(buff)), !settings.useDHCP);
-  WebFormText(client, "UDP Log Server", "logsvr", FormatIP(settings.logsvr, buff, sizeof(buff)), true);
+  WebFormCheckboxDisabler(client, PSTR("DHCP Networking"), "usedhcp", false, settings.useDHCP, true, ary1 );
+  WebFormText(client, PSTR("IP"), "ip", FormatIP(settings.ip, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, PSTR("Netmask"), "netmask", FormatIP(settings.netmask, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, PSTR("Gateway"), "gw", FormatIP(settings.gateway, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, PSTR("DNS"), "dns", FormatIP(settings.dns, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, PSTR("UDP Log Server"), "logsvr", FormatIP(settings.logsvr, buff, sizeof(buff)), true);
   
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
-  WebFormText(client, "NTP Server", "ntp", settings.ntp, true);
+  WebFormText(client, PSTR("NTP Server"), "ntp", settings.ntp, true);
   WebTimezonePicker(client);
-  WebFormCheckbox(client, "12hr Time Format", "use12hr", settings.use12hr, true);
-  WebFormCheckbox(client, "DD/MM/YY Date Format", "usedmy", settings.usedmy, true);
+  WebFormCheckbox(client, PSTR("12hr Time Format"), "use12hr", settings.use12hr, true);
+  WebFormCheckbox(client, PSTR("DD/MM/YY Date Format"), "usedmy", settings.usedmy, true);
 
   WebPrintf(client, "<br><h1>Power</h1>\n");
-  //WebFormText(client, "Mains Voltage", "voltage", settings.voltage, true);
-  WebFormCheckbox(client, "Start powered up after power loss", "onafterpfail", settings.onAfterPFail, true);
+  //WebFormText(client, PSTR("Mains Voltage"), "voltage", settings.voltage, true);
+  WebFormCheckbox(client, PSTR("Start powered up after power loss"), "onafterpfail", settings.onAfterPFail, true);
 
   WebPrintf(client, "<br><H1>MQTT</h1>\n");
   const char *ary2[] = { "mqtthost", "mqttport", "mqttssl", "mqttuser", "mqttpass", "mqtttopic", "mqttclientid", "" };
-  WebFormCheckboxDisabler(client, "Enable MQTT", "mqttEnable", true, settings.mqttEnable, true, ary2 );
-  WebFormText(client, "Host", "mqtthost", settings.mqttHost, settings.mqttEnable);
-  WebFormText(client, "Port", "mqttport", settings.mqttPort, settings.mqttEnable);
-  WebFormCheckbox(client, "Use SSL", "mqttssl", settings.mqttSSL, settings.mqttEnable);
-  WebFormText(client, "User", "mqttuser", settings.mqttUser, settings.mqttEnable);
-  WebFormText(client, "Pass", "mqttpass", settings.mqttPass, settings.mqttEnable);
-  WebFormText(client, "ClientID", "mqttclientid", settings.mqttClientID, settings.mqttEnable);
-  WebFormText(client, "Topic", "mqtttopic", settings.mqttTopic, settings.mqttEnable);
+  WebFormCheckboxDisabler(client, PSTR("Enable MQTT"), "mqttEnable", true, settings.mqttEnable, true, ary2 );
+  WebFormText(client, PSTR("Host"), "mqtthost", settings.mqttHost, settings.mqttEnable);
+  WebFormText(client, PSTR("Port"), "mqttport", settings.mqttPort, settings.mqttEnable);
+  WebFormCheckbox(client, PSTR("Use SSL"), "mqttssl", settings.mqttSSL, settings.mqttEnable);
+  WebFormText(client, PSTR("User"), "mqttuser", settings.mqttUser, settings.mqttEnable);
+  WebFormText(client, PSTR("Pass"), "mqttpass", settings.mqttPass, settings.mqttEnable);
+  WebFormText(client, PSTR("ClientID"), "mqttclientid", settings.mqttClientID, settings.mqttEnable);
+  WebFormText(client, PSTR("Topic"), "mqtttopic", settings.mqttTopic, settings.mqttEnable);
 
   WebPrintf(client, "<br><h1>Web UI</h1>\n");
-  WebFormText(client, "Admin User", "uiuser", settings.uiUser, true);
-  WebFormText(client, "Admin Password", "uipass", "*****", true);
+  WebFormText(client, PSTR("Admin User"), "uiuser", settings.uiUser, true);
+  WebFormText(client, PSTR("Admin Password"), "uipass", "*****", true);
 
   WebPrintf(client, "<input type=\"submit\" value=\"Submit\">\n");
   WebPrintf(client, "</form></body></html>\n");
@@ -591,17 +613,18 @@ void SendSetupHTML(WiFiClient *client)
 // Status Web Page
 void SendStatusHTML(WiFiClient *client)
 {
-  bool curPower = !GetRelay();
+  bool curPower = GetRelay();
   char buff[64];
   
   WebHeaders(client, NULL);
+  WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>%s Status</title>" ENCODING "</head>\n", settings.hostname);
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Hostname: %s<br>\n", settings.hostname);
   MakeSSID(buff, sizeof(buff));
   WebPrintf(client, "Setup SSID: %s<br>\n", buff);
   WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, buff, sizeof(buff)));
-  WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
+  WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br><br>\n",curPower?"ON":"OFF", curPower?"off.html":"on.html");
 //  WebPrintf(client, "Current: %dmA (%dW @ %dV)<br>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
 
   WebPrintf(client, "<table border=\"1px\">\n");
@@ -620,7 +643,10 @@ void SendStatusHTML(WiFiClient *client)
     WebPrintf(client, "<td><a href=\"edit.html?id=%d\">Edit</a></td></tr>\r\n", i);
   }
   WebPrintf(client, "</table><br>\n");
-  WebPrintf(client, "<a href=\"reconfig.html\">Change System Configuration</a><br>\n");
+  WebPrintf(client, "<a href=\"reconfig.html\">Change System Configuration</a><br><br>\n");
+
+  WebPrintf(client, "CGI Action URLs: <a href=\"on.html\">On</a> <a href=\"off.html\">Off</a> <a href=\"toggle.html\">Toggle</a> <a href=\"pulseoff.html\">Pulse Off</a> ");
+  WebPrintf(client, "<a href=\"pulseon.html\">Pulse On</a> <a href=\"status.html\">Status</a> <a href=\"hang.html\">Reset</a><br>\n");
   WebPrintf(client, "</body>\n");
 }
 
@@ -628,6 +654,7 @@ void SendStatusHTML(WiFiClient *client)
 void SendEditHTML(WiFiClient *client, int id)
 {
   WebHeaders(client, NULL);
+  WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>PsychoPlug Rule Edit</title>" ENCODING "</head>\n");
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "<h1>Editing rule %d</h1>\n", id+1);
@@ -643,7 +670,7 @@ void SendEditHTML(WiFiClient *client, int id)
   }
   WebPrintf(client, "\">All</button></td>\n");
   for (byte j=0; j<7; j++) {
-    WebPrintf(client, "<td><input type=\"checkbox\" id=\"%c\" name=\"%c\" %s></td>\n", 'a'+j, 'a'+j, settings.event[id].dayMask & (1<<j)?" checked":"");
+    WebPrintf(client, "<td><input type=\"checkbox\" id=\"%c\" name=\"%c\" %s></td>\n", 'a'+j, 'a'+j, settings.event[id].dayMask & (1<<j)?"checked":"");
   }
     WebPrintf(client, "<td><select name=\"hr\">");
   if (settings.use12hr) {
@@ -671,7 +698,8 @@ void SendEditHTML(WiFiClient *client, int id)
 // Success page, auto-refresh in 1 sec to index
 void SendSuccessHTML(WiFiClient *client)
 {
-  WebHeaders(client, "Refresh: 1; url=index.html\r\n");
+  WebHeaders(client, PSTR("Refresh: 1; url=index.html\r\n"));
+  WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>Success</title>" ENCODING "</head><body><h1><a href=\"index.html\">Success.  Click here if not auto-refreshed</a></h1></body></html>\n");
 }
 
@@ -698,6 +726,10 @@ void setup()
   // Load our certificate and key from FLASH before we start
   https.setRSAKey(rsakey, sizeof(rsakey));
   https.setX509Cert(x509, sizeof(x509));
+
+  // Make sure ESP isn't doing any wifi operations.  Sometimes starts back up in AP mode, for example
+  WiFi.disconnect();
+  WiFi.softAPdisconnect(true);
 
   if (ok) {
     isSetup = true;
@@ -803,6 +835,7 @@ void ParseSetupForm(char *params)
 void SendRebootHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
+  WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>Setting Configuration</title>" ENCODING "</head><body>\n");
   WebPrintf(client, "<h1>Setting Configuration</h1>");
   WebPrintf(client, "<br>\n");
@@ -815,6 +848,7 @@ void SendRebootHTML(WiFiClient *client)
 void SendResetHTML(WiFiClient *client)
 {
   WebHeaders(client, NULL);
+  WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>Resetting PsychoPlug</title>" ENCODING "</head><body>\n");
   WebPrintf(client, "<h1>Resetting the plug, please manually reconnect in 5 seconds.</h1>");
   WebPrintf(client, "</body>");
@@ -988,6 +1022,8 @@ void loop()
         } else if (!strcmp_P(url, PSTR("pulseon.html"))) {
           PerformAction(ACTION_PULSEON);
           SendSuccessHTML(&client);
+        } else if (!strcmp_P(url, PSTR("status.html"))) {
+          WebPrintf(&client, "%d", GetRelay()?1:0);
         } else if (!strcmp_P(url, PSTR("hang.html"))) {
           SendResetHTML(&client);
           Reset(); // Restarting safer than trying to change wifi/mqtt/etc.

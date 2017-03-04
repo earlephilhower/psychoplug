@@ -40,8 +40,8 @@ void PerformAction(int action)
     case ACTION_ON: SetRelay(true); break;
     case ACTION_OFF: SetRelay(false); break;
     case ACTION_TOGGLE: SetRelay(!GetRelay()); break;
-    case ACTION_PULSEOFF: SetRelay(false); delay(500); SetRelay(true); break;
-    case ACTION_PULSEON: SetRelay(true); delay(500); SetRelay(false); break;
+    case ACTION_PULSEOFF: SetRelay(false); delay(2000); SetRelay(true); break;
+    case ACTION_PULSEON: SetRelay(true); delay(2000); SetRelay(false); break;
   }
   
 }
