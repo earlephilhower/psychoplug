@@ -2,6 +2,7 @@
 
 # 1024 or 512.   512 saves memory...
 BITS=512
+C=$PWD
 pushd /tmp
 
 openssl genrsa -out tls.ca_key.pem $BITS
@@ -23,7 +24,9 @@ openssl x509 -req -in tls.x509_$BITS.req  -out tls.x509_$BITS.pem -sha256 -CAcre
 openssl x509 -in tls.ca_x509.pem -outform DER -out tls.ca_x509.cer
 openssl x509 -in tls.x509_$BITS.pem -outform DER -out tls.x509_$BITS.cer
 
-xxd -i tls.key_$BITS
-xxd -i tls.x509_$BITS.cer
+xxd -i tls.key_$BITS       | sed 's/.*{//' | sed 's/\};//' | sed 's/unsigned.*//' > "$C/key.h"
+xxd -i tls.x509_$BITS.cer  | sed 's/.*{//' | sed 's/\};//' | sed 's/unsigned.*//' > "$C/x509.h"
+
+rm -f tls.ca_key.pem tls.key_$BITS.pem tls.key_$BITS certs.conf tls.ca_x509.req tls.x509_$BITS.req tls.ca_x509.pem tls.x509_$BITS.pem tls.srl tls.x509_$BITS.cer tls.ca_x509.cer
 
 popd
