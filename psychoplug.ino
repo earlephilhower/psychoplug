@@ -216,17 +216,21 @@ void WebHeaders(WiFiClient *client, const char *headers)
 }
 
 
+void MakeSSID(char *ssid, int len)
+{
+  byte mac[6];
+  WiFi.macAddress(mac);
+  snprintf_P(ssid, len, PSTR("PSYCHOPLUG-%02X%02X%02X"), mac[3], mac[4], mac[5]);
+}
 
 void StartSetupAP()
 {
   char ssid[16];
-  byte mac[6];
 
   LogPrintf("Starting Setup AP Mode\n");
 
   isSetup = false;
-  WiFi.macAddress(mac);
-  snprintf_P(ssid, sizeof(ssid), PSTR("PSYCHOPLUG-%02X%02X%02X"), mac[3], mac[4], mac[5]);
+  MakeSSID(ssid, sizeof(ssid));
   WiFi.softAP(ssid);
 
   LogPrintf("Waiting for connection\n");
@@ -591,10 +595,13 @@ void SendStatusHTML(WiFiClient *client)
   char buff[64];
   
   WebHeaders(client, NULL);
-  WebPrintf(client, "<html><head><title>PsychoPlug Status</title>" ENCODING "</head>\n");
+  WebPrintf(client, "<html><head><title>%s Status</title>" ENCODING "</head>\n", settings.hostname);
   WebPrintf(client, "<body>\n");
+  WebPrintf(client, "Hostname: %s<br>\n", settings.hostname);
+  MakeSSID(buff, sizeof(buff));
+  WebPrintf(client, "Setup SSID: %s<br>\n", buff);
   WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, buff, sizeof(buff)));
-  WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
+  WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br><br>\n",curPower?"OFF":"ON", curPower?"on.html":"off.html");
 //  WebPrintf(client, "Current: %dmA (%dW @ %dV)<br>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
 
   WebPrintf(client, "<table border=\"1px\">\n");
