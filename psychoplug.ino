@@ -669,8 +669,7 @@ void setup()
   StartRelay(settings.onAfterPFail?true:false);
 
   // Load our certificate and key from FLASH before we start
-  https.setRSAKey(rsakey, sizeof(rsakey));
-  https.setX509Cert(x509, sizeof(x509));
+  https.setServerKeyAndCert_P(rsakey, sizeof(rsakey), x509, sizeof(x509));
 
   // Make sure ESP isn't doing any wifi operations.  Sometimes starts back up in AP mode, for example
   WiFi.disconnect();
@@ -897,10 +896,6 @@ void HandleEditHTML(WiFiClient *client, char *params)
 
 void loop()
 {
-  static uint16_t cnt = 0;
-  if (!cnt) LogPrintf("HeapFree=%d\n", ESP.getFreeHeap());
-  cnt = (cnt+1) % 2048;
-  
   // Let the button toggle the relay always
   ManageButton();
 
