@@ -24,7 +24,8 @@
 #include <Arduino.h>
 #include "schedule.h"
 
-const byte SETTINGSVERSION = 2;
+#define SETTINGSVERSION (2)
+
 typedef struct {
   byte version;
   char ssid[32];

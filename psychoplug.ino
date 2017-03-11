@@ -237,7 +237,8 @@ void StartSTA()
   StartLog();
   
   SetTZ(settings.timezone);
-  (void)LocalTime(now());
+  char atime[64];
+  LogPrintf("Local time is now: %s\n", AscTime(now(), settings.use12hr, settings.usedmy, atime, sizeof(atime)));
 }
 
 // In-place decoder, overwrites source with decoded values.  Needs 0-termination on input
@@ -329,7 +330,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     hlen = (byte)client->readBytesUntil('\r', hdrBuff, sizeof(hdrBuff)-1);
     hdrBuff[hlen] = 0;
     if (!strncmp_P(hdrBuff, PSTR("Authorization: Basic "), 21)) {
-      strcpy(authBuff, hdrBuff);
+      strncpy(authBuff, hdrBuff, sizeof(authBuff));
     }
   } while (hlen > 0);
 
@@ -361,7 +362,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
 
   char *url;
   char *qp;
-  if (!memcmp(reqBuff, "GET ", 4)) {
+  if (!memcmp_P(reqBuff, PSTR("GET "), 4)) {
     client->flush(); // Don't need anything here...
     
     // Break into URL and form data
@@ -374,7 +375,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     } else {
       qp = &NUL;
     }
-  } else if (!memcmp(reqBuff, "POST ", 5)) {
+  } else if (!memcmp_P(reqBuff, PSTR("POST "), 5)) {
     uint8_t newline;
     client->read(&newline, 1); // Get rid of \n
 
@@ -472,6 +473,7 @@ void WebTimezonePicker(WiFiClient *client)
   }
   WebPrintf(client, "</select><br>\n");
 
+  // Javascript to sort alphabetically...
   WebPrintf(client, "<script type=\"text/javascript\">\n");
   WebPrintf(client, "function sortSelect(selElem) { \n");
   WebPrintf(client, "  var tmpAry = new Array();\n");
@@ -506,7 +508,7 @@ void WebTimezonePicker(WiFiClient *client)
 void SendSetupHTML(WiFiClient *client)
 {
   char buff[16];
-  
+
   WebHeaders(client, NULL);
   WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>" ENCODING "</head>\n");

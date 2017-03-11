@@ -24,10 +24,9 @@
 #include <Arduino.h>
 
 // Button event types
-const byte BUTTON_NONE = 0;
-const byte BUTTON_PRESS = 1;
-const byte BUTTON_RELEASE = 2;
-
+#define BUTTON_NONE    (0)
+#define BUTTON_PRESS   (1)
+#define BUTTON_RELEASE (2)
 
 void StartButton();
 

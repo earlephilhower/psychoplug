@@ -23,6 +23,7 @@
 #include "settings.h"
 #include "mqtt.h"
 #include "relay.h"
+#include "log.h"
 
 static byte DebounceButton();
 
@@ -78,6 +79,7 @@ static byte DebounceButton()
       if (curButton != debounceButton) {
         event = (debounceButton)?BUTTON_RELEASE:BUTTON_PRESS;
         debounceButton = curButton;
+        LogPrintf("Button Event: %d\n", event);
       }
       ignoring = false;
     }
