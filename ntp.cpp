@@ -25,18 +25,20 @@
 
 #include "ntp.h"
 #include "settings.h"
+#include "log.h"
 
 static WiFiUDP ntpUDP;
 static time_t GetNTPTime();
 static void SendNTPPacket(IPAddress &address, byte *packetBuffer);
 
+static int syncInterval = 600;
 
 void StartNTP()
 {
   // Enable NTP timekeeping
   ntpUDP.begin(8675); // 309
   setSyncProvider(GetNTPTime);
-  setSyncInterval(300);
+  setSyncInterval(syncInterval);
 }
 
 void StopNTP()
@@ -63,6 +65,30 @@ static time_t GetNTPTime()
     int size = ntpUDP.parsePacket();
     if (size >= NTP_PACKET_SIZE) {
       ntpUDP.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
+
+#ifdef DEBUG_NTP
+      for (int i=0; i<6; i++) {
+        LogPrintf("NTP %02x: ", i*8);
+        for (int j=0; j<8; j++) LogPrintf("%02x ", packetBuffer[i*8+j]);
+        LogPrintf("\n");
+      }
+#endif
+
+      unsigned char stratum = packetBuffer[1];
+      if (stratum==0) {
+        if (!memcmp_P(packetBuffer+12, PSTR("RATE"), 4)) {
+          LogPrintf("NTP RATE Kiss of Death, setting syncInterval to %d\n", syncInterval);
+          syncInterval += 10;
+          setSyncInterval(syncInterval);
+        } else if (!memcmp_P(packetBuffer+12, PSTR("RSTR"), 4) || !memcmp_P(packetBuffer+12, PSTR("DENY"), 4)) {
+          LogPrintf("NTP DENY/RSTR Kiss of Death, disabling NTP requests from this IP\n");
+          // TBD - should we clear it?  No way to notify user easily... settings.ntp[0] = 0;
+        } else {
+          LogPrintf("NTP Kiss of Death, Unknown code: %c%c%c%c\n", packetBuffer[12], packetBuffer[13], packetBuffer[14], packetBuffer[15]);
+        }
+        return 0; // Some error occurred, can't get the time
+      }
+
       unsigned long secsSince1900;
       // convert four bytes starting at location 40 to a long integer
       secsSince1900 =  (unsigned long)packetBuffer[40] << 24;
