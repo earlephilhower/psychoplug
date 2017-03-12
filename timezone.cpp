@@ -18,6 +18,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef TEST_TIMEZONE
 #include <Arduino.h>
 #include <TimeLib.h>
 #include "timezone.h"
@@ -45,14 +46,15 @@ time_t mktime(struct tm *tm)
   tme.Hour = tm->tm_hour; 
   tme.Wday = tm->tm_wday+1;   // day of week, sunday is day 1
   tme.Day = tm->tm_mday;
-  tme.Month = tm->tm_mon; 
+  tme.Month = tm->tm_mon+1;  // Jan = 1 in tme, 0 in tm
   tme.Year = (uint8_t)(tm->tm_year - 70); // offset from 1970; 
-  time_t makeTime(tmElements_t &tm); // convert time elements into time_t
+  time_t t = makeTime(tme); // convert time elements into time_t
+  return t;
+  
 }
 
 struct tm *gmtime_r(const time_t *timep, struct tm *tm)
 {
-//  static struct tm tm;
   tmElements_t tme;
   breakTime(*timep, tme); // break time_t into elements
   tm->tm_sec = tme.Second;
@@ -60,10 +62,32 @@ struct tm *gmtime_r(const time_t *timep, struct tm *tm)
   tm->tm_hour = tme.Hour;
   tm->tm_wday = tme.Wday-1; // Sun=0 in tm, 1 in tme
   tm->tm_mday = tme.Day;
-  tm->tm_mon = tme.Month;
+  tm->tm_mon = tme.Month-1; // Jan=0 in tm, 1 in tme
   tm->tm_year = tme.Year + 70; // 0=1900 in tm, 1970 in tme
   return tm;
 }
+
+#else
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+
+#define ICACHE_RODATA_ATTR
+#define PSTR
+#include "tz.h"
+
+#define memcpy_P memcpy
+#define snprintf_P snprintf
+#define strlcpy strncpy
+#define strncpy_P strncpy
+#define LogPrintf printf
+#define SECS_PER_MIN (60)
+#define SECS_PER_HOUR (60*60)
+#define SECS_PER_DAY (60*60*24)
+#endif
+
 
 char *GetNextTZ(bool reset, char *buff, char buffLen)
 {
@@ -129,7 +153,7 @@ void UpdateDSTInfo(time_t whenUTC)
 	struct tm t;
 	int ruleIdx;
 
-  LogPrintf("Updating DST Info\n");
+  LogPrintf("+UpdateDSTInfo(%ld)\n", (long)whenUTC);
 
 	ruleIdx = 0;
 	for (int i=0; i<ruleCount && ruleIdx < 2; i++) {
@@ -149,12 +173,12 @@ void UpdateDSTInfo(time_t whenUTC)
   strlcpy(dstString[0], dstRule[0].fmtstr, sizeof(dstString[0]));
   strlcpy(dstString[1], dstRule[1].fmtstr, sizeof(dstString[1]));
 
-	//memcpy(&t, gmtime(&whenUTC), sizeof(t));
   gmtime_r(&whenUTC, &t);
   
 	int curYear = 1900 + t.tm_year;
 	dstYear = curYear;
-
+  LogPrintf(" UpdateDSTInfo year=%d\n", dstYear);
+  
 	// Calculate the time when each rule will fire this year
 	for (int i=0; i<2; i++) {
 		memset(&t, sizeof(t), 0);
@@ -166,9 +190,9 @@ void UpdateDSTInfo(time_t whenUTC)
 		t.tm_min = 0;
 		t.tm_sec = 0;
 		time_t at = mktime(&t);
+    LogPrintf(" UpdateDSTInfo: t.tm_year = %d, at = %ld\n", (int)t.tm_year, (long)at);
 		// Fill in the wday, yday field
-		//memcpy(&t, gmtime(&at), sizeof(t));
-   gmtime_r(&at, &t);
+    gmtime_r(&at, &t);
 		// Now we have "t" which has the UTC time for day 1 of the month.
 		// Adjust to the proper day mechanically.  Could be optimized
 		switch (dstRule[i].daytrig) {
@@ -226,11 +250,9 @@ void UpdateDSTInfo(time_t whenUTC)
 				// Go to the next month and work backwards
 				while (t.tm_mon == dstRule[i].month) {
 					at += 7 * SECS_PER_DAY;
-					//memcpy(&t, gmtime(&at), sizeof(t));
           gmtime_r(&at, &t);
 				}
 				at -= 7 * SECS_PER_DAY; // Back one week
-		//		memcpy(&t, gmtime(&at), sizeof(t));
         gmtime_r(&at, &t);
 				break;
 		}
@@ -258,72 +280,24 @@ void UpdateDSTInfo(time_t whenUTC)
 				at -= otherdstoffsecs;
 				break;
 		}
-		//memcpy(&t, gmtime(&at), sizeof(t));
     gmtime_r(&at, &t);
 		dstChangeAtUTC[i] = at;
 		dstOffsetSecs[i] = dstoffsecs;
+    LogPrintf(" UpdateDSTInfo: dstChangeAtUTC[%d] = %ld\n", i, (long)dstChangeAtUTC[i]);
+    LogPrintf(" UpdateDSTInfo: dstOffsetSecs[%d] = %ld\n", i, (long)dstOffsetSecs[i]);
 	}
+  LogPrintf("-UpdateDSTInfo()\n");
 }
 
-time_t LocalTime(time_t whenUTC)
-{
-	struct tm t;
-//  memcpy(&t, gmtime(&whenUTC), sizeof(t));
-  gmtime_r(&whenUTC, &t);
-  
-	if ((dstYear != t.tm_year + 1900) && useDSTRule) UpdateDSTInfo(whenUTC);
-	if (!useDSTRule) {
-		// Just UTC offset needed 
-		return whenUTC + utcOffsetSecs;
-	} else if ((whenUTC >= dstChangeAtUTC[0]) && (whenUTC < dstChangeAtUTC[1])) {
-		// At 1st DST change
-		return whenUTC + utcOffsetSecs + dstOffsetSecs[0];
-	} else {
-		// After 2nd change or before 1st
-		return whenUTC + utcOffsetSecs + dstOffsetSecs[1];
-	}
-}
-
-char *AscTime(time_t whenUTC, bool use12Hr, bool useDMY, char *buff, int buffLen)
-{
-  time_t t = LocalTime(whenUTC);
-
-  char tzID[16];
-  if (!useDSTRule) {
-    // No TZ string replacement needed
-    strlcpy(tzID, timezoneStr, sizeof(tzID));
-  } else if ((whenUTC >= dstChangeAtUTC[0]) && (whenUTC < dstChangeAtUTC[1])) {
-    // At 1st DST change
-    snprintf(tzID, sizeof(tzID), timezoneStr, dstString[0]);
-  } else {
-    // After 2nd change or before 1st
-    snprintf(tzID, sizeof(tzID), timezoneStr, dstString[1]);
-  }
-
-  int h = hour(t);
-  int m = minute(t);
-  int s = second(t);
-  int mn = month(t);
-  int dy = day(t);
-  int yr = year(t);
-
-  const char *ampm = "";
-  if (use12Hr) {
-    if (h==0) { h = 12; ampm = "AM"; }
-    else if (h==12) { ampm = "PM"; }
-    else if (h<12) { ampm = "AM"; }
-    else { h -= 12; ampm = "PM"; }
-  }
-  snprintf_P(buff, buffLen, PSTR("%d:%02d:%02d%s %s, %d/%d/%d"), h, m, s, ampm, tzID, useDMY?dy:mn, useDMY?mn:dy, yr);
-
-  return buff;
-}
 
 
 bool SetTZ(const char *tzName)
 {
 	int timezoneNum = FindTZName(tzName);
-	if (timezoneNum<0) timezoneNum = FindTZName("UTC"); // Default to UTC/GMT
+	if (timezoneNum<0) {
+	  LogPrintf("SetTZ: Unable to find timezone named '%s', using UTC\n", tzName);
+	  timezoneNum = FindTZName("UTC"); // Default to UTC/GMT
+	}
 
   memcpy_P(&myTimezone, &mtimezone[timezoneNum], sizeof(myTimezone));
 
@@ -343,8 +317,90 @@ bool SetTZ(const char *tzName)
 	}
 }
 
-#if 0
-void main(int argc, const char *argv[])
+time_t LocalTime(time_t whenUTC)
+{
+  struct tm t;
+  gmtime_r(&whenUTC, &t);
+  
+  if ((dstYear != t.tm_year + 1900) && useDSTRule) UpdateDSTInfo(whenUTC);
+  if (!useDSTRule) {
+    // Just UTC offset needed 
+    return whenUTC + utcOffsetSecs;
+  } else if ((whenUTC >= dstChangeAtUTC[0]) && (whenUTC < dstChangeAtUTC[1])) {
+    // At 1st DST change
+    return whenUTC + utcOffsetSecs + dstOffsetSecs[0];
+  } else {
+    // After 2nd change or before 1st
+    return whenUTC + utcOffsetSecs + dstOffsetSecs[1];
+  }
+}
+
+static char *Weekday(int wd, char *dest, int len)
+{
+  switch (wd) {
+    case 1: strncpy_P(dest, PSTR("Sunday"), len); break;
+    case 2: strncpy_P(dest, PSTR("Monday"), len); break;
+    case 3: strncpy_P(dest, PSTR("Tuesday"), len); break;
+    case 4: strncpy_P(dest, PSTR("Wednesday"), len); break;
+    case 5: strncpy_P(dest, PSTR("Thursday"), len); break;
+    case 6: strncpy_P(dest, PSTR("Friday"), len); break;
+    case 7: strncpy_P(dest, PSTR("Saturday"), len); break;
+  }
+  return dest;
+}
+
+char *AscTime(time_t whenUTC, bool use12Hr, bool useDMY, char *buff, int buffLen)
+{
+  time_t t = LocalTime(whenUTC);
+
+  char tzID[16];
+  if (!useDSTRule) {
+    // No TZ string replacement needed
+    strlcpy(tzID, timezoneStr, sizeof(tzID));
+  } else if ((whenUTC >= dstChangeAtUTC[0]) && (whenUTC < dstChangeAtUTC[1])) {
+    // At 1st DST change
+    snprintf(tzID, sizeof(tzID), timezoneStr, dstString[0]);
+  } else {
+    // After 2nd change or before 1st
+    snprintf(tzID, sizeof(tzID), timezoneStr, dstString[1]);
+  }
+
+#ifdef TEST_TIMEZONE
+  struct tm q;
+  gmtime_r(&t, &q);
+  int h = q.tm_hour;
+  int m = q.tm_min;
+  int s = q.tm_sec;
+  int wd = q.tm_wday+1;
+  int mn = q.tm_mon+1;
+  int dy = q.tm_mday;
+  int yr = q.tm_year;
+#else
+  int h = hour(t);
+  int m = minute(t);
+  int s = second(t);
+  int wd = weekday(t);
+  int mn = month(t);
+  int dy = day(t);
+  int yr = year(t);
+#endif
+
+  const char *ampm = "";
+  if (use12Hr) {
+    if (h==0) { h = 12; ampm = "AM"; }
+    else if (h==12) { ampm = "PM"; }
+    else if (h<12) { ampm = "AM"; }
+    else { h -= 12; ampm = "PM"; }
+  }
+  char wdName[16];
+  snprintf_P(buff, buffLen, PSTR("%2d:%02d:%02d%s %s, %s %d/%d/%d"), h, m, s, ampm, tzID, Weekday(wd, wdName, sizeof(wdName)), useDMY?dy:mn, useDMY?mn:dy, yr);
+
+  return buff;
+}
+
+
+#ifdef TEST_TIMEZONE
+int main(int argc, const char *argv[])
 {
 	setenv("TZ", "", 1);
 	if (argc<2) { printf("Please enter a timezone parameter\n"); exit(1); }
@@ -352,18 +408,21 @@ void main(int argc, const char *argv[])
 
 	time_t now;
 	time(&now);
+  now -= SECS_PER_DAY;
 	for (int i =0; i<365; i++) {
 		for (int j=0; j<24; j++) {
 			for (int k=0; k<60; k++) {
 				time_t local = LocalTime(now);
 				struct tm t;
 				memcpy(&t, gmtime(&local), sizeof(t));
-				printf("%d/%02d/%d @ %d:%02d\n", t.tm_mon+1, t.tm_mday, t.tm_year+1900, t.tm_hour, t.tm_min);
+//				printf("%d/%02d/%d @ %d:%02d\n", t.tm_mon+1, t.tm_mday, t.tm_year+1900, t.tm_hour, t.tm_min);
+        char b[128];
+        printf("%s\n", AscTime(local, true, false, b, 128));
 				now += SECS_PER_MIN;
 			}
 		}
 	}
+ return 0;
 }
-
 #endif
 
