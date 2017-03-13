@@ -18,6 +18,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* Taken and simplified from the DNSServer and example code in the ESP8266
+   Arduino setup to only reply with our IP and provide some logging and no 
+   malloc()/free()ing. */
+
 #include <Arduino.h>
 #include <WiFiUdp.h>
 #include <lwip/def.h>
