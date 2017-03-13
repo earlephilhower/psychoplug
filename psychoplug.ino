@@ -836,7 +836,7 @@ void SendGoToConfigureHTTPS(WiFiClient *client)
   LogPrintf("SendGoToConfigureHTTPS: Sent headers\n");
   WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>Configure PsychoPlug</title>" ENCODING "</head><body>\n");
-  WebPrintf(client, "<h1><a href=\"https://%d.%d.%d.%d/setup.html\">Go to configuration</a></h1>", setupIP[0], setupIP[1], setupIP[2], setupIP[3]);
+  WebPrintf(client, "<h1><a href=\"https://%d.%d.%d.%d/index.html\">Go to configuration</a></h1>", setupIP[0], setupIP[1], setupIP[2], setupIP[3]);
   WebPrintf(client, "</body>");
 }
 
@@ -993,11 +993,6 @@ void loop()
       LogPrintf("+HTTPS setup request\n");
       if (WebReadRequest(&client, &url, &params, false)) {
         if (IsIndexHTML(url)) {
-          LogPrintf("Sending redirector to config https link\n");
-          SendGoToConfigureHTTPS(&redir);
-          LogPrintf("Sent\n");
-        } else if (!strcmp_P(url, PSTR("setup.html"))) {
-//        if (IsIndexHTML(url)) {
           SendSetupHTML(&client);
         } else if (!strcmp_P(url, PSTR("config.html")) && *params) {
           HandleConfigSubmit(&client, params);
