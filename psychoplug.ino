@@ -485,11 +485,33 @@ void WebFormCheckboxDisabler(WiFiClient *client, PGM_P /*const char **/label, co
 void WebTimezonePicker(WiFiClient *client)
 {
   bool reset = true;
-  WebPrintf(client, "Timezone: <select name=\"timezone\" id=\"timezone\">\n");
+  WebPrintf(client, "Timezone: <select name=\"tz\" id=\"tz\">\n");
   char str[64];
-  while ( GetNextTZ(reset, str, sizeof(str)) ) {
+  char temp[128];
+  char *buff = (char *)alloca(1400); // We'll combine a bunch of TZs into a single packet this way, way faster to send
+  if (buff) {
+    buff[0] = 0;
+    int len = 0;
+    while ( GetNextTZ(reset, str, sizeof(str)) ) {
+        reset = false;
+        snprintf_P(temp, sizeof(temp), PSTR("<option value=\"%s\" %s>%s</option>\n"), str, !strcmp(str, settings.timezone)?"selected":"", str);
+        if (len + strlen(temp) > 1399) {
+          client->print(buff);
+          buff[0] = 0;
+          len = 0;
+        }
+        strcpy(buff+len, temp);
+        len += strlen(temp);
+        //WebPrintf(client, "<option value=\"%s\" %s>%s</option>\n", str, !strcmp(str, settings.timezone)?"selected":"", str);
+    }
+    if (len) {
+      client->print(buff);
+    }
+  } else { // Can't allocate buff, fall back to standard way
+    while ( GetNextTZ(reset, str, sizeof(str)) ) {
       reset = false;
       WebPrintf(client, "<option value=\"%s\" %s>%s</option>\n", str, !strcmp(str, settings.timezone)?"selected":"", str);
+    }
   }
   WebPrintf(client, "</select><br>\n");
 
@@ -513,13 +535,13 @@ void WebTimezonePicker(WiFiClient *client)
   WebPrintf(client, "  }\n");
   WebPrintf(client, "  return;\n");
   WebPrintf(client, "}\n");
-  WebPrintf(client, "sortSelect(document.getElementById('timezone'));\n");
+  WebPrintf(client, "sortSelect(document.getElementById('tz'));\n");
   WebPrintf(client, "function selectItemByValue(elmnt, value) {\n");
   WebPrintf(client, "  for(var i=0; i < elmnt.options.length; i++) {\n");
   WebPrintf(client, "    if(elmnt.options[i].value === value) { elmnt.selectedIndex = i; break; }\n");
   WebPrintf(client, "  }\n");
   WebPrintf(client, "}\n");
-  WebPrintf(client, "setTimeout(function(){selectItemByValue(document.getElementById('timezone'), '%s');}, 500);\n", settings.timezone );
+  WebPrintf(client, "setTimeout(function(){selectItemByValue(document.getElementById('tz'), '%s');}, 500);\n", settings.timezone );
   WebPrintf(client, "</script>\n");
 
 }
@@ -539,11 +561,11 @@ void SendSetupHTML(WiFiClient *client)
   WebPrintf(client, "<br><h1>WiFi Network</h1>\n");
   WebFormText(client, PSTR("SSID"), "ssid", settings.ssid, true);
   WebFormText(client, PSTR("Password"), "pass", settings.psk, true);
-  WebFormText(client, PSTR("Hostname"), "hostname", settings.hostname, true);
-  const char *ary1[] = {"ip", "netmask", "gw", "dns", ""};
-  WebFormCheckboxDisabler(client, PSTR("DHCP Networking"), "usedhcp", false, settings.useDHCP, true, ary1 );
+  WebFormText(client, PSTR("Hostname"), "hn", settings.hostname, true);
+  const char *ary1[] = {"ip", "nm", "gw", "dns", ""};
+  WebFormCheckboxDisabler(client, PSTR("DHCP Networking"), "dh", false, settings.useDHCP, true, ary1 );
   WebFormText(client, PSTR("IP"), "ip", FormatIP(settings.ip, buff, sizeof(buff)), !settings.useDHCP);
-  WebFormText(client, PSTR("Netmask"), "netmask", FormatIP(settings.netmask, buff, sizeof(buff)), !settings.useDHCP);
+  WebFormText(client, PSTR("Netmask"), "nm", FormatIP(settings.netmask, buff, sizeof(buff)), !settings.useDHCP);
   WebFormText(client, PSTR("Gateway"), "gw", FormatIP(settings.gateway, buff, sizeof(buff)), !settings.useDHCP);
   WebFormText(client, PSTR("DNS"), "dns", FormatIP(settings.dns, buff, sizeof(buff)), !settings.useDHCP);
   WebFormText(client, PSTR("UDP Log Server"), "logsvr", FormatIP(settings.logsvr, buff, sizeof(buff)), true);
@@ -556,18 +578,18 @@ void SendSetupHTML(WiFiClient *client)
 
   WebPrintf(client, "<br><h1>Power</h1>\n");
   //WebFormText(client, PSTR("Mains Voltage"), "voltage", settings.voltage, true);
-  WebFormCheckbox(client, PSTR("Start powered up after power loss"), "onafterpfail", settings.onAfterPFail, true);
+  WebFormCheckbox(client, PSTR("Start powered up after power loss"), "pf", settings.onAfterPFail, true);
 
   WebPrintf(client, "<br><H1>MQTT</h1>\n");
-  const char *ary2[] = { "mqtthost", "mqttport", "mqttssl", "mqttuser", "mqttpass", "mqtttopic", "mqttclientid", "" };
-  WebFormCheckboxDisabler(client, PSTR("Enable MQTT"), "mqttEnable", true, settings.mqttEnable, true, ary2 );
-  WebFormText(client, PSTR("Host"), "mqtthost", settings.mqttHost, settings.mqttEnable);
-  WebFormText(client, PSTR("Port"), "mqttport", settings.mqttPort, settings.mqttEnable);
-  WebFormCheckbox(client, PSTR("Use SSL"), "mqttssl", settings.mqttSSL, settings.mqttEnable);
-  WebFormText(client, PSTR("User"), "mqttuser", settings.mqttUser, settings.mqttEnable);
-  WebFormText(client, PSTR("Pass"), "mqttpass", settings.mqttPass, settings.mqttEnable);
-  WebFormText(client, PSTR("ClientID"), "mqttclientid", settings.mqttClientID, settings.mqttEnable);
-  WebFormText(client, PSTR("Topic"), "mqtttopic", settings.mqttTopic, settings.mqttEnable);
+  const char *ary2[] = { "mhost", "mport", "mssl", "muser", "mpass", "mtopic", "mclientid", "" };
+  WebFormCheckboxDisabler(client, PSTR("Enable MQTT"), "mEn", true, settings.mqttEnable, true, ary2 );
+  WebFormText(client, PSTR("Host"), "mhost", settings.mqttHost, settings.mqttEnable);
+  WebFormText(client, PSTR("Port"), "mport", settings.mqttPort, settings.mqttEnable);
+  WebFormCheckbox(client, PSTR("Use SSL"), "mssl", settings.mqttSSL, settings.mqttEnable);
+  WebFormText(client, PSTR("User"), "muser", settings.mqttUser, settings.mqttEnable);
+  WebFormText(client, PSTR("Pass"), "mpass", settings.mqttPass, settings.mqttEnable);
+  WebFormText(client, PSTR("ClientID"), "mclientid", settings.mqttClientID, settings.mqttEnable);
+  WebFormText(client, PSTR("Topic"), "mtopic", settings.mqttTopic, settings.mqttEnable);
 
   WebPrintf(client, "<br><h1>Web UI</h1>\n");
   WebFormText(client, PSTR("Admin User"), "uiuser", settings.uiUser, true);
@@ -768,33 +790,33 @@ void ParseSetupForm(char *params)
   while (ParseParam(&params, &namePtr, &valPtr)) {
     ParamText("ssid", settings.ssid);
     ParamText("pass", settings.psk);
-    ParamText("hostname", settings.hostname);
-    ParamCheckbox("usedhcp", settings.useDHCP);
+    ParamText("hn", settings.hostname);
+    ParamCheckbox("dh", settings.useDHCP);
     Param4Int("ip", settings.ip);
-    Param4Int("netmask", settings.netmask);
+    Param4Int("nm", settings.netmask);
     Param4Int("gw", settings.gateway);
     Param4Int("dns", settings.dns);
     Param4Int("logsvr", settings.logsvr);
     
     ParamText("ntp", settings.ntp);
-    ParamText("timezone", settings.timezone);
+    ParamText("tz", settings.timezone);
     ParamCheckbox("use12hr", settings.use12hr);
     ParamCheckbox("usedmy", settings.usedmy);
 
-    ParamCheckbox("onafterpfail", settings.onAfterPFail);
+    ParamCheckbox("pf", settings.onAfterPFail);
 
-    ParamCheckbox("mqttEnable", settings.mqttEnable);
-    ParamText("mqtthost", settings.mqttHost);
-    ParamInt("mqttport", settings.mqttPort);
+    ParamCheckbox("mEn", settings.mqttEnable);
+    ParamText("mhost", settings.mqttHost);
+    ParamInt("mport", settings.mqttPort);
 //    int v;
 //    ParamInt("voltage", v);
 //    if ((v<80) || (v>255)) v=120; // Sanity-check
 //    settings.voltage = v;
-    ParamCheckbox("mqttssl", settings.mqttSSL);
-    ParamText("mqtttopic", settings.mqttTopic);
-    ParamText("mqttclientid", settings.mqttClientID);
-    ParamText("mqttuser", settings.mqttUser);
-    ParamText("mqttpass", settings.mqttPass);
+    ParamCheckbox("mssl", settings.mqttSSL);
+    ParamText("mtopic", settings.mqttTopic);
+    ParamText("mclientid", settings.mqttClientID);
+    ParamText("muser", settings.mqttUser);
+    ParamText("mpass", settings.mqttPass);
 
     ParamText("uiuser", settings.uiUser);
     char tempPass[64];
