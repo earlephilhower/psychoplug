@@ -329,7 +329,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
   *paramStr = NULL;
 
   LogPrintf("+WebReadRequest @ %d\n", millis());
-  unsigned long timeoutMS = millis() + 2000; // Max delay before we timeout
+  unsigned long timeoutMS = millis() + 5000; // Max delay before we timeout
   while (!client->available() && millis() < timeoutMS) { delay(10); }
   if (!client->available()) {
     LogPrintf("-WebReadRequest: Timeout @ %d\n", millis());
@@ -605,33 +605,41 @@ void SendSetupHTML(WiFiClient *client)
 void SendStatusHTML(WiFiClient *client)
 {
   bool curPower = GetRelay();
-  char buff[64];
-  
+  char tmp[64];
+
   WebHeaders(client, NULL);
   WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>%s Status</title>" ENCODING "</head>\n", settings.hostname);
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Hostname: %s<br>\n", settings.hostname);
-  MakeSSID(buff, sizeof(buff));
-  WebPrintf(client, "Setup SSID: %s<br>\n", buff);
-  WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, buff, sizeof(buff)));
+  MakeSSID(tmp, sizeof(tmp));
+  WebPrintf(client, "Setup SSID: %s<br>\n", tmp);
+  WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, tmp, sizeof(tmp)));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br><br>\n",curPower?"ON":"OFF", curPower?"off.html":"on.html");
 //  WebPrintf(client, "Current: %dmA (%dW @ %dV)<br>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
 
   WebPrintf(client, "<table border=\"1px\">\n");
   WebPrintf(client, "<tr><th>#</th><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Time</th><th>Action</th><th>EDIT</th></tr>\n");
+  char *buff = (char *)alloca(500); // By construction this will fit a row of the table
   for (byte i=0; i<MAXEVENTS; i++) {
-    WebPrintf(client, "<tr><td>%d.</td>", i+1);
+    int len = 0;
+    sprintf_P(buff+len, PSTR("<tr><td>%d.</td>"), i+1);
+    len += strlen(buff+len);
     for (byte j=0; j<7; j++) {
-      WebPrintf(client, "<td>%s</td>", (settings.event[i].dayMask & (1<<j))?"[X]":"[&nbsp;]");
+      sprintf_P(buff+len, PSTR("<td>%s</td>"), (settings.event[i].dayMask & (1<<j))?"[X]":"[&nbsp;]");
+      len += strlen(buff+len);
     }
     if (settings.use12hr) {
-      WebPrintf(client, "<td>%d:%02d %s</td>", (settings.event[i].hour)?settings.event[i].hour%12:12, settings.event[i].minute, (settings.event[i].hour<12)?"AM":"PM");
+      sprintf_P(buff+len, PSTR("<td>%d:%02d %s</td>"), (settings.event[i].hour)?settings.event[i].hour%12:12, settings.event[i].minute, (settings.event[i].hour<12)?"AM":"PM");
+      len += strlen(buff+len);
     } else {
-      WebPrintf(client, "<td>%d:%02d</td>", settings.event[i].hour, settings.event[i].minute);
+      sprintf_P(buff+len, PSTR("<td>%d:%02d</td>"), settings.event[i].hour, settings.event[i].minute);
+      len += strlen(buff+len);
     }
-    WebPrintf(client, "<td>%s</td>", actionString[settings.event[i].action]);
-    WebPrintf(client, "<td><a href=\"edit.html?id=%d\">Edit</a></td></tr>\r\n", i);
+    sprintf_P(buff+len, PSTR("<td>%s</td>"), actionString[settings.event[i].action]);
+    len += strlen(buff+len);
+    sprintf_P(buff+len, PSTR("<td><a href=\"edit.html?id=%d\">Edit</a></td></tr>\r\n"), i);
+    client->print(buff);
   }
   WebPrintf(client, "</table><br>\n");
   WebPrintf(client, "<a href=\"reconfig.html\">Change System Configuration</a><br><br>\n");
@@ -675,7 +683,13 @@ void SendEditHTML(WiFiClient *client, int id)
     }
   }
   WebPrintf(client, "</select>:<select name=\"mn\">");
-  for (int j=0; j<60; j++) WebPrintf(client, "<option %s>%02d</option>", (settings.event[id].minute==j)?"selected":"", j);
+  char *buff = (char *)alloca(20*60+10);
+  int len=0;
+  for (int j=0; j<60; j++) {
+    sprintf_P(buff+len, "<option %s>%02d</option>", (settings.event[id].minute==j)?"selected":"", j);
+    len += strlen(buff+len);
+  }
+  client->print(buff);
   WebPrintf(client, "</select> ");
   if (settings.use12hr)
     WebPrintf(client, "<select name=\"ampm\"><option %s>AM</option><option %s>PM</option></select></td>", settings.event[id].hour<12?"selected":"", settings.event[id].hour>=12?"selected":"");
