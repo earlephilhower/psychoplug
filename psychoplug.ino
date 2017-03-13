@@ -32,6 +32,7 @@
 #include "relay.h"
 #include "led.h"
 #include "timezone.h"
+#include "dns.h"
 
 bool isSetup = false;
 
@@ -39,6 +40,10 @@ bool isSetup = false;
 // snprintf guarantees a null termination
 #define WebPrintf(c, fmt, ...) { char webBuff[192]; snprintf_P(webBuff, sizeof(webBuff), PSTR(fmt), ## __VA_ARGS__); (c)->print(webBuff); }
 #define WebPrintfPSTR(c, fmt, ...) { char webBuff[192]; snprintf_P(webBuff, sizeof(webBuff), (fmt), ## __VA_ARGS__); (c)->print(webBuff); }
+
+// Our setup IP
+static IPAddress setupIP = {192, 168, 4, 1};
+static IPAddress setupMask = {255, 255, 255, 0};
 
 // Web request line (URL, PARAMs parsed in-line)
 static char reqBuff[384];
@@ -131,17 +136,18 @@ void WebPrintError(WiFiClient *client, int code)
   }
 }
 
-void WebError(WiFiClient *client, int code, const char *headers)
+void WebError(WiFiClient *client, int code, const char *headers, bool usePMEM = true)
 {
+  LogPrintf("+WebError: Begin, free=%d\n", ESP.getFreeHeap());
   WebPrintf(client, "HTTP/1.1 %d\r\n", code);
   WebPrintf(client, "Server: PsychoPlug\r\n");
-  //fprintf(fp, "Content-length: %d\r\n", strlen(errorPage));
   WebPrintf(client, "Content-type: text/html\r\n");
   WebPrintf(client, "Cache-Control: no-cache, no-store, must-revalidate\r\n");
   WebPrintf(client, "Pragma: no-cache\r\n");
   WebPrintf(client, "Expires: 0\r\n");
+  LogPrintf("+WebError: Writing error headers: %08x\n", headers);
   if (headers) {
-    if ((unsigned int)headers < 0x40000000) {
+    if (!usePMEM) {
       WebPrintf(client, "%s", headers);
     } else {
       WebPrintfPSTR(client, headers);
@@ -155,6 +161,7 @@ void WebError(WiFiClient *client, int code, const char *headers)
   WebPrintf(client, "<body><h1>");
   WebPrintError(client, code);
   WebPrintf(client, "</h1></body></html>\r\n");
+  LogPrintf("-WebError\n");
 }
 
 
@@ -181,6 +188,7 @@ void MakeSSID(char *ssid, int len)
   snprintf_P(ssid, len, PSTR("PSYCHOPLUG-%02X%02X%02X"), mac[3], mac[4], mac[5]);
 }
 
+
 void StartSetupAP()
 {
   char ssid[32];
@@ -190,11 +198,17 @@ void StartSetupAP()
 
   isSetup = false;
   MakeSSID(ssid, sizeof(ssid));
+  WiFi.softAPConfig(setupIP, setupIP, setupMask);
   WiFi.softAP(ssid);
 
+  LogPrintf("Starting DNS server\n");
+//  StartDNS(&setupIP);
+  
   LogPrintf("Waiting for connection\n");
   https.begin();
+  https.setNoDelay(true);
   redirector.begin();
+  redirector.setNoDelay(true);
 }
 
 void StartSTA()
@@ -232,7 +246,9 @@ void StartSTA()
     
   // Start standard interface
   https.begin();
+  https.setNoDelay(true);
   redirector.begin();
+  redirector.setNoDelay(true);
   StartNTP();
   StartLog();
   
@@ -311,11 +327,12 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
 
   *urlStr = NULL;
   *paramStr = NULL;
-  
-  int timeout = 2000; // Max delay before we timeout
-  while (!client->available() && timeout) { delay(1); timeout--; }
-  if (!timeout) {
-    client->flush();
+
+  LogPrintf("+WebReadRequest @ %d\n", millis());
+  unsigned long timeoutMS = millis() + 2000; // Max delay before we timeout
+  while (!client->available() && millis() < timeoutMS) { delay(10); }
+  if (!client->available()) {
+    LogPrintf("-WebReadRequest: Timeout @ %d\n", millis());
     return false;
   }
   int wlen = client->readBytesUntil('\r', reqBuff, sizeof(reqBuff)-1);
@@ -346,6 +363,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
     bool matchUser = !strcmp(user, settings.uiUser);
     bool matchPass = VerifyPassword(pass);
     if (!authBuff[0] || !matchUser || !matchPass) {
+      LogPrintf("WebReadRequest: Unauthenticated\n");
       WebError(client, 401, PSTR("WWW-Authenticate: Basic realm=\"PsychoPlug\""));
       return false;
     }
@@ -393,12 +411,14 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
   } else {
     // Not a GET or POST, error
     WebError(client, 405, PSTR("Allow: GET, POST"));
+    LogPrintf("-WebReadRequest(): Illegal command\n");
     return false;
   }
 
   if (urlStr) *urlStr = url;
   if (paramStr) *paramStr = qp;
 
+  LogPrintf("-WebReadRequest(): Success\n");
   return true;
 }
 
@@ -509,6 +529,7 @@ void SendSetupHTML(WiFiClient *client)
 {
   char buff[16];
 
+  LogPrintf("+SendSetupHTML\n");
   WebHeaders(client, NULL);
   WebPrintf(client, DOCTYPE);
   WebPrintf(client, "<html><head><title>PsychoPlug Setup</title>" ENCODING "</head>\n");
@@ -554,6 +575,7 @@ void SendSetupHTML(WiFiClient *client)
 
   WebPrintf(client, "<input type=\"submit\" value=\"Submit\">\n");
   WebPrintf(client, "</form></body></html>\n");
+  LogPrintf("-SendSetupHTML\n");
 }
 
 
@@ -651,6 +673,11 @@ void SendSuccessHTML(WiFiClient *client)
 }
 
 
+extern "C" {
+  sint8 espconn_tcp_set_max_con(uint8 num);
+  uint8 espconn_tcp_get_max_con(void);
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -659,6 +686,8 @@ void setup()
   LogPrintf("Starting up...\n");
   delay(10);
 
+  espconn_tcp_set_max_con(15); // Allow lots of connections, which happens during wifi discovery by phones/etc.
+  LogPrintf("Maximum TCP connections: %d\n", espconn_tcp_get_max_con());
   LogPrintf("Settings size=%d\n", sizeof(settings));
   
   StartButton();
@@ -800,6 +829,17 @@ void SendResetHTML(WiFiClient *client)
   WebPrintf(client, "</body>");
 }
 
+void SendGoToConfigureHTTPS(WiFiClient *client)
+{
+  LogPrintf("+SendGoToConfigureHTTPS\n");
+  WebHeaders(client, NULL);
+  LogPrintf("SendGoToConfigureHTTPS: Sent headers\n");
+  WebPrintf(client, DOCTYPE);
+  WebPrintf(client, "<html><head><title>Configure PsychoPlug</title>" ENCODING "</head><body>\n");
+  WebPrintf(client, "<h1><a href=\"https://%d.%d.%d.%d/setup.html\">Go to configuration</a></h1>", setupIP[0], setupIP[1], setupIP[2], setupIP[3]);
+  WebPrintf(client, "</body>");
+}
+
 void Reset()
 {
   SaveSettings();
@@ -898,11 +938,22 @@ void HandleEditHTML(WiFiClient *client, char *params)
 
 void loop()
 {
+  static long lastMS = 0;
+  if (lastMS>millis() || (millis()-lastMS)>5000) {
+    lastMS = millis();
+    LogPrintf("@%d: ESP Heap Free=%d\n", lastMS, ESP.getFreeHeap());
+  }
+
   // Let the button toggle the relay always
   ManageButton();
 
   // Blink the LED appropriate to the state
-  ManageLED(isSetup ? LED_CONNECTED :  LED_AWAITSETUP);
+  ManageLED(isSetup ? LED_CONNECTED : LED_AWAITSETUP);
+
+  // Pump DNS queue
+  if (!isSetup) {
+    //ManageDNS();
+  }
   
   char *url;
   char *params;
@@ -912,30 +963,51 @@ void loop()
   // Any HTTP request, send it to https:// on our IP
   WiFiClient redir = redirector.available();
   if (redir) {
+    LogPrintf("HTTP Redirector available\n");
     if (WebReadRequest(&redir, &url, &params, false)) {
+      LogPrintf("HTTP Redirector request: %s\n", url);
       char newLoc[64];
-      IPAddress ip = WiFi.localIP();
-      if (!isSetup) ip = { 192, 168, 4, 1 };
-      snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/%s"), ip[0], ip[1], ip[2], ip[3], url[0]?url:"index.html");
-      WebError(&redir, 301, newLoc);
+      if (isSetup) {
+        IPAddress ip = WiFi.localIP();
+        snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/%s"), ip[0], ip[1], ip[2], ip[3], url[0]?url:"index.html");
+        WebError(&redir, 301, newLoc, false);
+      } else {
+//        if (!strcmp_P(url, PSTR("favicon.ico"))) {
+//          WebError(&redir, 404, NULL);
+//        } else if (!strcmp_P(url, PSTR("generate_204"))) {
+          LogPrintf("Sending redirector to config https link\n");
+          SendGoToConfigureHTTPS(&redir);
+          LogPrintf("Sent\n");
+//        } else {
+//          LogPrintf("Sending redirector to http://<>/configure.html\n");
+//          snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: http://%d.%d.%d.%d/configure.html"), setupIP[0], setupIP[1], setupIP[2], setupIP[3]);
+//          WebError(&redir, 301, newLoc, false);
+//        }
+      }
       redir.stop();
+      LogPrintf("redir.stop()\n");
     }
   } else if (!isSetup) {
     WiFiClientSecure client = https.available();
-    if (!client) return;
-    
-    if (WebReadRequest(&client, &url, &params, false)) {
-      if (IsIndexHTML(url)) {
-        SendSetupHTML(&client);
-      } else if (!strcmp_P(url, PSTR("config.html")) && *params) {
-        HandleConfigSubmit(&client, params);
-      } else {
-        WebError(&client, 404, NULL);
+    if (client) {
+      LogPrintf("+HTTPS setup request\n");
+      if (WebReadRequest(&client, &url, &params, false)) {
+        if (IsIndexHTML(url)) {
+          LogPrintf("Sending redirector to config https link\n");
+          SendGoToConfigureHTTPS(&redir);
+          LogPrintf("Sent\n");
+        } else if (!strcmp_P(url, PSTR("setup.html"))) {
+//        if (IsIndexHTML(url)) {
+          SendSetupHTML(&client);
+        } else if (!strcmp_P(url, PSTR("config.html")) && *params) {
+          HandleConfigSubmit(&client, params);
+        } else {
+          WebError(&client, 404, NULL);
+        }
       }
-    } else {
-      WebError(&client, 400, NULL);
+      client.stop();
+      LogPrintf("-HTTPS setup request\n");
     }
-    client.stop();
   } else {
     ManageMQTT();
     ManageSchedule();
