@@ -984,6 +984,7 @@ void loop()
 //          WebError(&redir, 301, newLoc, false);
 //        }
       }
+      redir.flush();
       redir.stop();
       LogPrintf("redir.stop()\n");
     }
@@ -1000,6 +1001,7 @@ void loop()
           WebError(&client, 404, NULL);
         }
       }
+      client.flush();
       client.stop();
       LogPrintf("-HTTPS setup request\n");
     }
@@ -1048,6 +1050,7 @@ void loop()
           WebError(&client, 404, NULL);
         }
       }
+      client.flush();
       client.stop();
     }
     PauseMQTT(false);
