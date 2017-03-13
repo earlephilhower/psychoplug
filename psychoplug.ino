@@ -686,7 +686,7 @@ void SendEditHTML(WiFiClient *client, int id)
   char *buff = (char *)alloca(20*60+10);
   int len=0;
   for (int j=0; j<60; j++) {
-    sprintf_P(buff+len, "<option %s>%02d</option>", (settings.event[id].minute==j)?"selected":"", j);
+    sprintf_P(buff+len, PSTR("<option %s>%02d</option>"), (settings.event[id].minute==j)?"selected":"", j);
     len += strlen(buff+len);
   }
   client->print(buff);
