@@ -56,6 +56,7 @@ typedef struct DNSHeader
 
 void StartDNS(IPAddress *ip)
 {
+  LogPrintf("Starting DNS server\n");
   apIP = *ip;
   dns.begin(53);
 }

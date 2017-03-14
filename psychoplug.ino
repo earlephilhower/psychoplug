@@ -201,7 +201,6 @@ void StartSetupAP()
   WiFi.softAPConfig(setupIP, setupIP, setupMask);
   WiFi.softAP(ssid);
 
-  LogPrintf("Starting DNS server\n");
 //  StartDNS(&setupIP);
   
   LogPrintf("Waiting for connection\n");
@@ -974,7 +973,7 @@ void HandleEditHTML(WiFiClient *client, char *params)
 
 void loop()
 {
-  static long lastMS = 0;
+  static unsigned long lastMS = 0;
   if (lastMS>millis() || (millis()-lastMS)>5000) {
     lastMS = millis();
     LogPrintf("@%d: ESP Heap Free=%d\n", lastMS, ESP.getFreeHeap());
@@ -988,13 +987,11 @@ void loop()
 
   // Pump DNS queue
   if (!isSetup) {
-    //ManageDNS();
+//    ManageDNS();
   }
   
   char *url;
   char *params;
-  char *namePtr;
-  char *valPtr;
 
   // Any HTTP request, send it to https:// on our IP
   WiFiClient redir = redirector.available();

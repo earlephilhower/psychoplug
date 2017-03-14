@@ -48,7 +48,7 @@ void PerformAction(int action)
 
 
 // Handle automated on/off simply on the assumption we don't lose any minutes
-static char lastHour = -1;
+static char lastHour = 25;
 static char lastMin = -1;
 static char lastDOW = -1;
 void ManageSchedule()
@@ -57,7 +57,7 @@ void ManageSchedule()
   if (timeStatus() == timeNotSet) return;
 
   // Sane startup time values
-  if (lastHour == -1) {
+  if (lastHour == 25) {
     time_t t = LocalTime(now());
     lastHour = hour(t);
     lastMin = minute(t);

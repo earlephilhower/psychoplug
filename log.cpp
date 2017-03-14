@@ -41,8 +41,6 @@ void StopLog()
 
 void Log(const char *str)
 {
-  bool useSerial = false;
-  
   if (!isSetup || !settings.logsvr[0]) {
     Serial.print(str);
     Serial.flush();

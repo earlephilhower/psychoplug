@@ -293,10 +293,13 @@ void UpdateDSTInfo(time_t whenUTC)
 
 bool SetTZ(const char *tzName)
 {
+  bool ret = true;
+
 	int timezoneNum = FindTZName(tzName);
 	if (timezoneNum<0) {
 	  LogPrintf("SetTZ: Unable to find timezone named '%s', using UTC\n", tzName);
 	  timezoneNum = FindTZName("UTC"); // Default to UTC/GMT
+    ret = false;
 	}
 
   memcpy_P(&myTimezone, &mtimezone[timezoneNum], sizeof(myTimezone));
@@ -314,7 +317,8 @@ bool SetTZ(const char *tzName)
 	} else {
 		// Calculate what UTC time we have to change and store it away
 		useDSTRule = true;
-	}
+  }
+  return ret;
 }
 
 time_t LocalTime(time_t whenUTC)
