@@ -22,9 +22,10 @@
 #define _settings_h
 
 #include <Arduino.h>
+#include "password.h"
 #include "schedule.h"
 
-#define SETTINGSVERSION (2)
+#define SETTINGSVERSION (3)
 
 typedef struct {
   byte version;
@@ -57,8 +58,8 @@ typedef struct {
 
   // Web Interface
   char uiUser[32];
-  char uiPassEnc[20];
-  char uiSalt[32];
+  char uiPassEnc[PASSENCLEN];
+  char uiSalt[SALTLEN];
 
   // Events to process
   Event event[MAXEVENTS];

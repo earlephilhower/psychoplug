@@ -41,11 +41,19 @@ void StopLog()
 
 void Log(const char *str)
 {
+  static char mac[12] = {0};
+  if (mac[0]==0) {
+    WiFi.macAddress((byte *)mac);
+    sprintf_P(mac, PSTR("%02x%02x%02x: "), mac[3], mac[4], mac[5]);
+  }
+
   if (!isSetup || !settings.logsvr[0]) {
+    Serial.print(mac);
     Serial.print(str);
     Serial.flush();
   } else {
     udpLog.beginPacket(settings.logsvr, 9911);
+    udpLog.write(mac, 5);
     udpLog.write(str, strlen(str));
     udpLog.endPacket();  
   }

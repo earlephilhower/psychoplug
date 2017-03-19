@@ -21,12 +21,15 @@
 #ifndef _password_h
 #define _password_h
 
+#define PASSENCLEN (20)
+#define SALTLEN (32)
+
 // Set the settings.uiPassEnc to the raw password and callthis to make a new salt and run encryption against it
 // Output overwrites the uiPassEnc variable
-void HashPassword(const char *pass);
+void HashPassword(const char *pass, char *uiSalt, char *uiPassEnc);
 
 // Check that entered password matches the hash in settings
-bool VerifyPassword(char *pass);
+bool VerifyPassword(char *pass, const char *uiSalt, const char *uiPassEnc);
 
 #endif
 

@@ -21,42 +21,42 @@
 #include <Arduino.h>
 #include <Hash.h>  //sha1 exported here
 #include "password.h"
-#include "settings.h"
+//#include "settings.h"
 
 
 // Set the settings.uiPassEnc to the raw password and callthis to make a new salt and run encryption against it
 // Output overwrites the uiPassEnc variable
-void HashPassword(const char *pass)
+void HashPassword(const char *pass, char *uiSalt, char *uiPassEnc)
 {
-  memset(settings.uiSalt, 0, sizeof(settings.uiSalt)); // Clear salt to start
-  memset(settings.uiPassEnc, 0, sizeof(settings.uiPassEnc)); // Clear salt to start
+  memset(uiSalt, 0, SALTLEN); // Clear salt to start
+  memset(uiPassEnc, 0, PASSENCLEN); // Clear salt to start
   if (pass[0]==0) return; // No password
-  for (unsigned int i=0; i<sizeof(settings.uiSalt); i++)
-    settings.uiSalt[i] = RANDOM_REG32 & 0xff;
+  for (unsigned int i=0; i<SALTLEN; i++)
+    uiSalt[i] = RANDOM_REG32 & 0xff;
 
   // Now catenate the hash and raw password to temp storage
   char raw[128];
   memset(raw, 0, sizeof(raw));
-  memcpy(raw, settings.uiSalt, sizeof(settings.uiSalt));
-  strncpy(raw+sizeof(settings.uiSalt), pass, 64);
+  memcpy(raw, uiSalt, SALTLEN);
+  strncpy(raw+SALTLEN, pass, 64);
   int len = strnlen(pass, 63)+1;
-  sha1((uint8_t*)raw, sizeof(settings.uiSalt)+len, (uint8_t*)settings.uiPassEnc);
+  sha1((uint8_t*)raw, SALTLEN+len, (uint8_t*)uiPassEnc);
   memset(raw, 0, sizeof(raw)); // Get rid of plaintext temp copy 
 }
 
-bool VerifyPassword(char *pass)
+bool VerifyPassword(char *pass, const char *uiSalt, const char *uiPassEnc)
 {
   // Now catenate the hash and raw password to temp storage
   char raw[128];
   memset(raw, 0, sizeof(raw));
-  memcpy(raw, settings.uiSalt, sizeof(settings.uiSalt));
-  strncpy(raw+sizeof(settings.uiSalt), pass, 64);
+  memcpy(raw, uiSalt, SALTLEN);
+  strncpy(raw+SALTLEN, pass, 64);
   int len = strnlen(pass, 63)+1;
   while (*pass) { *(pass++) = 0; } // clear out sent-in 
-  char dest[20];
-  sha1((uint8_t*)raw, sizeof(settings.uiSalt)+len, (uint8_t*)dest);
+  char dest[PASSENCLEN];
+  sha1((uint8_t*)raw, SALTLEN+len, (uint8_t*)dest);
   memset(raw, 0, sizeof(raw));
-  if (memcmp(settings.uiPassEnc, dest, sizeof(dest))) return false;
+  if (memcmp(uiPassEnc, dest, sizeof(dest))) return false;
   return true;
 }
 

@@ -76,7 +76,7 @@ bool LoadSettings(bool reset)
     strcpy_P(settings.timezone, PSTR("America/Los_Angeles"));
     settings.use12hr = true;
     settings.usedmy = false;
-    HashPassword("admin"); // This will set settings.uiPassEnc
+    HashPassword("admin", settings.uiSalt, settings.uiPassEnc);
     memset(settings.logsvr, 0, 4); 
     settings.onAfterPFail = false;
 //    settings.voltage = 120;
