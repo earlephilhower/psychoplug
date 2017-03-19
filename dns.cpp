@@ -121,14 +121,16 @@ void ManageDNS()
     struct DNSHeader *hdr = (struct DNSHeader *)pkt;
     if (hdr->QR == DNS_QR_QUERY && hdr->OPCode ==  DNS_OPCODE_QUERY) {
       if (ntohs(hdr->QDCount) == 1 && hdr->ANCount == 0 && hdr->NSCount == 0 && hdr->ARCount == 0) {
-        LogPrintf("DNS: Single query for '");
         unsigned char *p = pkt+12;
+        char nameBuff[256];
+        uint8_t j = 0;
         while (*p) {
           uint8_t cnt = *(p++);
-          for (uint8_t i=0; i<cnt; i++) LogPrintf("%c", *(p++));
-          if (*p) LogPrintf(".");
+          for (uint8_t i=0; i<cnt; i++) nameBuff[j++] = *(p++); 
+          if (*p) nameBuff[j++] = '.';
         }
-        LogPrintf("', replying with my IP\n");
+        nameBuff[j++] = 0;
+        LogPrintf("DNS: Single query for '%s', replying with my IP\n", nameBuff);
         ReplyWithIP(hdr, pkt, size);
       } else {
         LogPrintf("DNS: not parsed\n");
