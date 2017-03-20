@@ -269,6 +269,15 @@ void SendStatusHTML(WiFiClient *client)
   MakeSSID(tmp, sizeof(tmp));
   WebPrintf(client, "SSID: %s<br>\n", tmp);
   WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, tmp, sizeof(tmp)));
+  unsigned long ms = millis();
+  unsigned long days = ms / (24L * 60L * 60L * 1000L);
+  ms -= days * (24L * 60L * 60L * 1000L);
+  unsigned long hours = ms / (60L * 60L * 1000L);
+  ms -= hours * (60L * 60L * 1000L);
+  unsigned long mins = ms / (60L * 1000L);
+  ms -= mins * (60L * 1000L);
+  unsigned long secs = ms / (1000L);
+  WebPrintf(client, "Uptime: %d days, %d hours, %d minutes, %d seconds<br>\n", days, hours, mins, secs);
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br><br>\n",curPower?"ON":"OFF", curPower?"off.html":"on.html");
 //  WebPrintf(client, "Current: %dmA (%dW @ %dV)<br>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
 
