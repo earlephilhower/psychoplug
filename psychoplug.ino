@@ -19,6 +19,8 @@
 */
 
 #include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPUpdateServer.h>
 
 #include "psychoplug.h"
 #include "settings.h"
@@ -45,6 +47,11 @@ static IPAddress setupMask = {255, 255, 255, 0};
 
 // All it does is redirect to https://<given url>
 static WiFiServer redirector(80);
+
+// OTA updates on the cheap...
+static ESP8266WebServer *otaServer = NULL;
+static ESP8266HTTPUpdateServer *otaUpdateServer = NULL;
+
 
 // HTTPS interface
 static const uint8_t rsakey[]  ICACHE_RODATA_ATTR = {
@@ -137,7 +144,7 @@ void StartSetupAP()
   WiFi.softAPConfig(setupIP, setupIP, setupMask);
   WiFi.softAP(ssid);
 
-  //StartDNS(&setupIP);
+//  StartDNS(&setupIP);
   
   LogPrintf("Waiting for connection\n");
   https.begin();
@@ -260,7 +267,7 @@ void SendStatusHTML(WiFiClient *client)
   WebPrintf(client, "<body>\n");
   WebPrintf(client, "Hostname: %s<br>\n", settings.hostname);
   MakeSSID(tmp, sizeof(tmp));
-  WebPrintf(client, "Setup SSID: %s<br>\n", tmp);
+  WebPrintf(client, "SSID: %s<br>\n", tmp);
   WebPrintf(client, "Current Time: %s<br>\n", AscTime(now(), settings.use12hr, settings.usedmy, tmp, sizeof(tmp)));
   WebPrintf(client, "Power: %s <a href=\"%s\">Toggle</a><br><br>\n",curPower?"ON":"OFF", curPower?"off.html":"on.html");
 //  WebPrintf(client, "Current: %dmA (%dW @ %dV)<br>\n", GetCurrentMA(), (GetCurrentMA()* settings.voltage) / 1000, settings.voltage);
@@ -293,6 +300,7 @@ void SendStatusHTML(WiFiClient *client)
 
   WebPrintf(client, "CGI Action URLs: <a href=\"on.html\">On</a> <a href=\"off.html\">Off</a> <a href=\"toggle.html\">Toggle</a> <a href=\"pulseoff.html\">Pulse Off</a> ");
   WebPrintf(client, "<a href=\"pulseon.html\">Pulse On</a> <a href=\"status.html\">Status</a> <a href=\"hang.html\">Reset</a><br>\n");
+  WebPrintf(client, "<br>\n<a href=\"enableupdate.html\">Enable HTTP update of firmware for 10 minutes</a>\n");
   WebPrintf(client, "</body>\n");
 }
 
@@ -584,10 +592,33 @@ void HandleEditHTML(WiFiClient *client, char *params)
 }
 
 
+void SendOTARedirect(WiFiClient *client)
+{
+  LogPrintf("+SendOTARedirect\n");
+  IPAddress ip = WiFi.localIP();
+  WebHeaders(client, NULL);
+  WebPrintf(client, DOCTYPE);
+  WebPrintf(client, "<html><head><title>OTA Enabled</title>" ENCODING "</head><body>\n");
+  WebPrintf(client, "<h1><a href=\"http://%d.%d.%d.%d:8080/update\">Go to OTA page</a></h1>", ip[0], ip[1], ip[2], ip[3]);
+  WebPrintf(client, "</body>");
+}
+
+
+
 
 void loop()
 {
   static unsigned long lastMS = 0;
+  static unsigned long killUpdateTime = 0;
+
+  // Time to restart the plug if the update window is over
+  if (killUpdateTime && (millis() > killUpdateTime) ) {
+    LogPrintf("Restarting ESP due to update timeout\n");
+    ESP.restart();
+  } else if (otaServer)  {
+    otaServer->handleClient();
+  }
+  
   if (lastMS>millis() || (millis()-lastMS)>5000) {
     lastMS = millis();
     LogPrintf("@%d: ESP Heap Free=%d\n", lastMS, ESP.getFreeHeap());
@@ -601,7 +632,7 @@ void loop()
 
   // Pump DNS queue
   if (!isSetup) {
-    //ManageDNS();
+//    ManageDNS();
   }
   
   char *url;
@@ -619,17 +650,17 @@ void loop()
         snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/%s"), ip[0], ip[1], ip[2], ip[3], url[0]?url:"index.html");
         WebError(&redir, 301, newLoc, false);
       } else {
-//        if (!strcmp_P(url, PSTR("favicon.ico"))) {
-//          WebError(&redir, 404, NULL);
+        if (!strcmp_P(url, PSTR("favicon.ico"))) {
+          WebError(&redir, 404, NULL);
 //        } else if (!strcmp_P(url, PSTR("generate_204"))) {
-          LogPrintf("Sending redirector to config https link\n");
+//          LogPrintf("Sending 301 redirector to https://<>/configure.html\n");
+//          snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/configure.html"), setupIP[0], setupIP[1], setupIP[2], setupIP[3]);
+//          WebError(&redir, 301, newLoc, false);
+        } else {
+          LogPrintf("Sending redirector web page listing config https link\n");
           SendGoToConfigureHTTPS(&redir);
           LogPrintf("Sent\n");
-//        } else {
-//          LogPrintf("Sending redirector to http://<>/configure.html\n");
-//          snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: http://%d.%d.%d.%d/configure.html"), setupIP[0], setupIP[1], setupIP[2], setupIP[3]);
-//          WebError(&redir, 301, newLoc, false);
-//        }
+        }
       }
       redir.flush();
       redir.stop();
@@ -693,6 +724,13 @@ void loop()
           SendSetupHTML(&client);
         } else if (!strcmp_P(url, PSTR("config.html")) && *params) {
           HandleConfigSubmit(&client, params);
+        } else if (!strcmp_P(url, PSTR("enableupdate.html"))) {
+          otaUpdateServer = new ESP8266HTTPUpdateServer;
+          otaServer = new ESP8266WebServer(8080);
+          otaUpdateServer->setup(otaServer);
+          otaServer->begin();
+          killUpdateTime = millis() + 10*60*1000; // now + 10 mins
+          SendOTARedirect(&client);
         } else {
           WebError(&client, 404, NULL);
         }

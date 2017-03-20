@@ -134,7 +134,6 @@ void ManageDNS()
         ReplyWithIP(hdr, pkt, size);
       } else {
         LogPrintf("DNS: not parsed\n");
-        
       }
     }
     

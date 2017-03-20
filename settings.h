@@ -25,7 +25,7 @@
 #include "password.h"
 #include "schedule.h"
 
-#define SETTINGSVERSION (3)
+#define SETTINGSVERSION (2)
 
 typedef struct {
   byte version;
