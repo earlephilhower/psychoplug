@@ -54,7 +54,7 @@ static ESP8266HTTPUpdateServer *otaUpdateServer = NULL;
 
 
 // HTTPS interface
-static const uint8_t rsakey[]  ICACHE_RODATA_ATTR = {
+static const uint8_t rsakey[] ICACHE_RODATA_ATTR = {
 #include "key.h"
 };
 

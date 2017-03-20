@@ -1,28 +1,20 @@
-#PsychoPlug - ESP8266 outlet firmware with standalone HTTP scheduler and MQTT integration
+# PsychoPlug - ESP8266 outlet firmware with standalone HTTPS encrypted interface, in-box scheduler and MQTT integration
 
-This is a replacement firmware for ESP8266-based WIFI controlled outlets.  Built-in NTP driven event management means no MQTT server is needed (but is fully supported).  No cloud connection is required, only NTP access required to ensure accurate timekeeping.
+This is a gold-plated replacement firmware for ESP8266-based WIFI controlled outlets.
+* HTTPS secured web interface (see https://github.com/esp8266/Arduino/pull/3001 for required changes to Arduino)
+* Password protected (over HTTPS for security even with HTTP BAsic Authentication)
+* Built-in NTP driven event management and timekeeping with Daylight Savings Time auto-adjustment and world time zones
+* Up to 24 daily events configurable on a per-day, per-minute basis
+* No MQTT server is *required*, but MQTT (unencrypted and encrypted) is fully supported
+* No cloud connection is required for operation
+* OTA firmware updates
 
-
-##DISCLAIMER and WARNINGS
+## DISCLAIMER and WARNINGS
 Use of this software and procedure are completely at your own risk.  This project involves working on devices that control household current.  At no time should the remote control outlet be connected to an outlet/power source while either (a) opened, which would possibly expose you to *lethal* voltages, or (b) connected to your computer, which could do *fatal damage* to your computer and attached devices.  Perform any disassembly and reassembly with great care ensuring no spare parts or wires are left inside the plug after your intial upload.  IF YOU HAVE ANY DOUBT ABOUT PERFORMING THESE OPERATIONS PLEASE DO NOT CONTINUE.
 
-DO NOT NAT-FORWARD THIS TO THE PUBLIC INTERNET! While I have strived to make this a robust and safe web interface, there is always the possibilty that there are bugs known or unknown which might allow someone other than yourself to control the outlet without authorization.  Even without any bugs, the HTTP basic authentication used provides a *cleartext username and password* combination for anyone on the Internet to see.  Unfortunately there does not yet exist an Arduino ESP2866 SSL server, which would securely encrypt this username and password.  If you've got working code for one in the Arduino toolchain, drop me a line, please!
+DO NOT NAT-FORWARD THIS TO THE PUBLIC INTERNET! While I have strived to make this a robust and safe web interface, there is always the possibilty that there are bugs known or unknown which might allow someone other than yourself to control the outlet without authorization.
 
 INSTEAD, use a VPN into your house or a web-based, SSL encrypted MQTT broker to control things from outside your home.  Either way does not require any holes in your NAT firewall on inbound connections, and will fully encrypt any username and passwords send over the public Internet.
-
-
-##Key features
-
-Here's a summary of features and operating instructions.  They're thin now, but probably more detailed than the ones you got in the box with your plug.
-
-* Complete replacement for stock firmware on many kinds of ESP8266-based plugs (I'm using WorkChoice EcoPlugs from Walmart)
-* No cloud connection required to work (NTP needed for timekeeping)
-* NTP timekeeping
-* Built-in events, up to 24 per day, configurable on a per-minute and day basis, no controller needed
-* Integrates with home automation systems (WIP) using MQTT publishing and subscribing
-* Web-based configuration and control with password access
-* Power monitoring and email alerting (i.e. detect appliance trouble) ((TBD)
-* Power button always works, even in unconnected state
 
 ## Prerequisites
 
@@ -34,11 +26,12 @@ Here's a summary of features and operating instructions.  They're thin now, but 
 ## Connecting the plug to your computer
 
 ![Programmer Connections](connections.jpg  "Programmer Connections")
+
 You can follow the connections and directions given in [2]  to upload the image, but if you have a USB to Serial  adapter that provides both +5V and +3.3V outputs then you can actually use tha above image as a guide and only have to solder on 3 wires, not 5 (and for me it was a pain soldering the wires to the frame so this was a big win).
 
 1. UNPLUG YOUR USB adaptor!
-2. Connect the ground from your USB adapter
-3. Connect The USB +5V output to the voltage regulator input.
+2. Connect the ground from your USB adapter.  I used a grasping logic analyzer probe for this to avoid soldering.
+3. Connect The USB +5V output to the voltage regulator input.  I used a cheap grasping logic analyzer probe for this as well.
 4. Connect the USB TX to the 4th pin from the right as shown in the picture (this is the ESP8266 RX pin)
 5. Connect the USB RX to the 5th pin from the right as shown (this is the ESP8266 TX pin)
 6. Connect GPIO (the 1st pin from the right) to the ground ring.  You can just hold it to the ring or use a clip.
@@ -58,7 +51,8 @@ At this point you should be able to upload images using the Arduino IDE.
 ## Initial configuration
 
 * Connect your phone or laptop WIFI to the plug's configuration access point (PSYCHOPLUG-XXX)
-* Enter your home's SSID/PSK and other network configurations
+* Go to https://192.168.4.1 (DNS redirection is a WIP, so for now you'll need to use the IP)
+* Enter your home's SSID/PSK and other network configurations, passwords, etc.
 * Plug will report success and reboot, but because you've just doen a serial upload will hang in the bootloader
 * Power cycle the plug (i.e. unplug the USB serial cable then re-plug it in to your computer) to ensure a clean reboot
 
@@ -68,7 +62,7 @@ The web interface is simple and text based and should be easy to use on any smar
 
 ## Schedule setup
 
-* Use HTTP://plugname/ to configure schedules, check state, etc.
+* Use HTTPS://plugname/ to configure schedules, check state, etc.
 * You may need to consult your WiFi AP to find the plug IP (or use a static IP in configuration above) if there are DNS issues with your AP.
 * Verify the time looks good on the initial web page, that the relay is working (toggle off and on from the main page)
 
@@ -99,7 +93,7 @@ If the outlet is unable to connect to the AP it will continually retry.  Should 
 
 ## Network reconfiguration
 
- After initial setup, the control web page also has a "Change Configuration" capability available at the bottom of the page.
+After initial setup, the control web page also has a "Change Configuration" capability available at the bottom of the page.
 
 To reconfigure in case of lost password you can hold the power button down while plugging in the switch.
 
@@ -107,6 +101,7 @@ To reconfigure in case of lost password you can hold the power button down while
 ## Web CGI control
 
 Simple web applications can be used to control the state of the outlet (be sure to use authentication!):
+
 	wget --user=username --password=mypass "https://..../off.html"
 	wget --user=username --password=mypass "https://..../on.html"
 	wget --user=username --password=mypass "https://..../toggle.html"
@@ -123,7 +118,6 @@ Both SSL encrypted and unencrypted MQTT connections are supported.  Be sure to u
 	.../button (press,release) => When the button is physically pressed or released on the plug
 	.../powerstate (0,1) => When the controlled appliance is turned off or on
 	.../event => When an event fires, records the event type in text (Off, On, Toggle, Pulse Low, Pulse High)
-	.../powerma => Current in mA reported every 10 seconds.  Very noisy, don't put too much faith in it in my experience.
 
 ### MQTT topics subscribed
 
