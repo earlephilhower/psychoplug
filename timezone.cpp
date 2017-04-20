@@ -359,8 +359,8 @@ char *AscTime(time_t whenUTC, bool use12Hr, bool useDMY, char *buff, int buffLen
 
   char tzID[16];
   if (!useDSTRule) {
-    // No TZ string replacement needed
-    strlcpy(tzID, timezoneStr, sizeof(tzID));
+    // Just replace any string with "S" for standard
+    snprintf(tzID, sizeof(tzID), timezoneStr, "S");
   } else if ((whenUTC >= dstChangeAtUTC[0]) && (whenUTC < dstChangeAtUTC[1])) {
     // At 1st DST change
     snprintf(tzID, sizeof(tzID), timezoneStr, dstString[0]);
