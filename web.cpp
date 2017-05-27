@@ -46,12 +46,14 @@ void WebPrintError(WiFiClient *client, int code)
 void WebError(WiFiClient *client, int code, const char *headers, bool usePMEM)
 {
   LogPrintf("+WebError: Begin, free=%d\n", ESP.getFreeHeap());
+  LogPrintf(" Sending headers...\n");
   WebPrintf(client, "HTTP/1.1 %d\r\n", code);
   WebPrintf(client, "Server: PsychoPlug\r\n");
   WebPrintf(client, "Content-type: text/html\r\n");
   WebPrintf(client, "Cache-Control: no-cache, no-store, must-revalidate\r\n");
   WebPrintf(client, "Pragma: no-cache\r\n");
   WebPrintf(client, "Expires: 0\r\n");
+  WebPrintf(client, "Connection: close\r\n");
   LogPrintf("+WebError: Writing error headers: %08x\n", headers);
   if (headers) {
     if (!usePMEM) {
@@ -80,6 +82,7 @@ void WebHeaders(WiFiClient *client, PGM_P /*const char **/headers)
   WebPrintf(client, "Content-type: text/html\r\n");
   WebPrintf(client, "Cache-Control: no-cache, no-store, must-revalidate\r\n");
   WebPrintf(client, "Pragma: no-cache\r\n");
+  WebPrintf(client, "Connection: close\r\n");
   WebPrintf(client, "Expires: 0\r\n");
   if (headers) {
     WebPrintfPSTR(client, headers);
@@ -282,25 +285,12 @@ bool ParseParam(char **paramStr, char **name, char **value)
   return true;
 }
 
-
-
 bool IsIndexHTML(const char *url)
 {
   if (!url) return false;
   if (*url==0 || !strcmp_P(url, PSTR("/")) || !strcmp_P(url, PSTR("/index.html")) || !strcmp_P(url, PSTR("index.html"))) return true;
   else return false;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
