@@ -109,6 +109,11 @@ Simple web applications can be used to control the state of the outlet (be sure 
 	wget --user=username --password=mypass "https://..../pulseon.html"
 
 
+## Factory reset
+
+Hold down the power button while plugging in the unit to enable reconfiguration.  The LED will do a fast flash and you can reconnect to the built-in AP to adjust any settings (like WiFi).  If you don't want to change anything, simply unplug and re-plug in the unit and it will return to normal w/o any changes.
+
+
 ## MQTT
 
 Both SSL encrypted and unencrypted MQTT connections are supported.  Be sure to use the correct port (1883 = no SSL, 8883 = SSL) in the setup page for your choice.
