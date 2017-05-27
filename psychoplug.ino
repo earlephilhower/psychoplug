@@ -170,11 +170,12 @@ void StartSTA()
   if (settings.psk[0]) WiFi.begin(settings.ssid, settings.psk);
   else WiFi.begin(settings.ssid);
 
-  // Try forever.  
+  // Try forever
   while (WiFi.status() != WL_CONNECTED) {
+    LogPrintf("Trying to connect to '%s' key '%s'\n", settings.ssid, settings.psk );
     ManageLED(LED_CONNECTING);
     ManageButton();
-    delay(1);
+    delay(100);
   }
   
   if (WiFi.status() != WL_CONNECTED) {
@@ -214,6 +215,18 @@ void SendSetupHTML(WiFiClient *client)
 
   WebPrintf(client, "<br><h1>WiFi Network</h1>\n");
   WebFormText(client, PSTR("SSID"), "ssid", settings.ssid, true);
+  int cnt = WiFi.scanNetworks();
+  if (cnt==0) {
+    WebPrintf(client, "Discovered networks: No WIFI networks detected.<br>\n");
+  } else {
+    WebPrintf(client, "Discovered networks: <select onchange=\"setval(this)\">");
+    WebPrintf(client, "<option></option>");
+    for (byte i=0; i<cnt; i++) {
+      WebPrintf(client, "<option>%s</option>", WiFi.SSID(i).c_str());
+    }
+    WebPrintf(client, "</select><br>\n");
+    WebPrintf(client, "<script language=\"javascript\">function setval(i) { document.getElementById(\"ssid\").value = i.options[i.selectedIndex].text;}</script>\n");
+  }
   WebFormText(client, PSTR("Password"), "pass", settings.psk, true);
   WebFormText(client, PSTR("Hostname"), "hn", settings.hostname, true);
   const char *ary1[] = {"ip", "nm", "gw", "dns", ""};
