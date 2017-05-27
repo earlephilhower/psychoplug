@@ -21,7 +21,7 @@ INSTEAD, use a VPN into your house or a web-based, SSL encrypted MQTT broker to 
 * Ensure you have the Arduino ESP8266 IDE installed.  Note that for Ubuntu the Arduino IDE is *very* old and you'll need to install from http://arduino.cc to get access to the ESP8266 toolchain.
 * Install the library "MQTT by Joel Gaehwiler" from the Arduino library manager or from https://github.com/256dpi/arduino-mqtt/
 * Install the library "TimeLib by Paul Stoffregen" (https://github.com/PaulStoffregen/Time) manually
-* Select your model and flash size (normally GenericESP8266 and 512K, no SPIFFS)
+* Select your model and flash size (normally GenericESP8266 and 1M, 64K SPIFFS)
 
 ## Connecting the plug to your computer
 
