@@ -306,7 +306,9 @@ void SendStatusHTML(WiFiClient *client)
       len += strlen(buff+len);
     }
     if (settings.use12hr) {
-      sprintf_P(buff+len, PSTR("<td>%d:%02d %s</td>"), (settings.event[i].hour)?settings.event[i].hour%12:12, settings.event[i].minute, (settings.event[i].hour<12)?"AM":"PM");
+      int prthr = settings.event[i].hour%12;
+      if (!prthr) prthr = 12;
+      sprintf_P(buff+len, PSTR("<td>%d:%02d %s</td>"), prthr, settings.event[i].minute, (settings.event[i].hour<12)?"AM":"PM");
       len += strlen(buff+len);
     } else {
       sprintf_P(buff+len, PSTR("<td>%d:%02d</td>"), settings.event[i].hour, settings.event[i].minute);
@@ -350,9 +352,10 @@ void SendEditHTML(WiFiClient *client, int id)
   }
     WebPrintf(client, "<td><select name=\"hr\">");
   if (settings.use12hr) {
-    for (int j=0; j<12; j++) {
-      if (settings.event[id].hour) WebPrintf(client, "<option %s>%d</option>", (settings.event[id].hour%12)==j?"selected":"", j)
-      else WebPrintf(client, "<option %s>%d</option>", j==0?"selected":"", j+1);
+    int selhr = settings.event[id].hour%12;
+    if (!selhr) selhr = 12;
+    for (int j=1; j<=12; j++) {
+      WebPrintf(client, "<option %s>%d</option>", selhr==j?"selected":"", j)
     }
   } else {
     for (int j=0; j<24; j++) {
