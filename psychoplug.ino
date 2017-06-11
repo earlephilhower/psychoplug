@@ -711,7 +711,7 @@ void loop()
     ManagePowerMonitor();
 
     // Need to stop any mqtt connections during the web processing, only one SSL context available
-    PauseMQTT(true);
+//    PauseMQTT(true);
     
     WiFiClientSecure client = https.available();
     if (client) {
@@ -760,7 +760,7 @@ void loop()
       client.flush();
       client.stop();
     }
-    PauseMQTT(false);
+    //PauseMQTT(false);
 
   }
 }
