@@ -87,6 +87,16 @@ static void ReplyWithIP(DNSHeader *hdr, unsigned char *buff, int len)
   hdr->RA = 0;  
 
   dns.beginPacket(dns.remoteIP(), dns.remotePort());
+  buff[2] = 0x81;
+  buff[3] = 0x80;
+  buff[4] = 0;
+  buff[5] = 1;
+  buff[6] = 0;
+  buff[7] = 1;
+  buff[8] = 0;
+  buff[9] = 0;
+  buff[10] = 0;
+  buff[11] = 0;
   dns.write(buff, len);
 
   dns.write((uint8_t)192); //  answer name is a pointer
@@ -118,6 +128,7 @@ void ManageDNS()
   if (size) {
     unsigned char *pkt = (unsigned char *)alloca(size);
     dns.read(pkt, size);
+    Serial.print("DNS: "); for (int i=0; i<size; i++) Serial.print(pkt[i], HEX); Serial.println("");
     struct DNSHeader *hdr = (struct DNSHeader *)pkt;
     if (hdr->QR == DNS_QR_QUERY && hdr->OPCode ==  DNS_OPCODE_QUERY) {
       if (ntohs(hdr->QDCount) == 1 && hdr->ANCount == 0 && hdr->NSCount == 0 && hdr->ARCount == 0) {
