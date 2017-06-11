@@ -24,11 +24,20 @@ INSTEAD, use a VPN into your house or a web-based, SSL encrypted MQTT broker to 
 * Select your model and flash size (normally GenericESP8266 and 1M, 64K SPIFFS)
 * Select 160MHz in Tools->CPU Frequency->160MHz to make the SSL web interface fast enough to use.
 
+## Generating your own SSL certificate before compiling
+
+Before the first compile, you will need to generate a new SSL key and certificate. No default key is included in the repository, by design.  If you don't generate a new key the compilation will fail with an "include file not found(x509.h and key.h)"
+
+Because the X509 certificate and key can be used to intercept and decrypt all communications between the plug and your web browser, it is imperative that you generate your own pair.
+
+"make-certs-256.sh" is included to generate these files.  On a Linux machine with the standard OpenSSL utilities, simply change to the source directory and run "bash make-certs-256.sh" and it will generate two files, "x509.h" and "key.h" which will be included in the compilation automatically.
+
+
 ## Connecting the plug to your computer
 
 ![Programmer Connections](connections.jpg  "Programmer Connections")
 
-You can follow the connections and directions given in [2]  to upload the image, but if you have a USB to Serial  adapter that provides both +5V and +3.3V outputs then you can actually use tha above image as a guide and only have to solder on 3 wires, not 5 (and for me it was a pain soldering the wires to the frame so this was a big win).
+You can follow the connections and directions given in [2] to upload the image, but if you have a USB to Serial  adapter that provides both +5V and +3.3V outputs then you can actually use tha above image as a guide and only have to solder on 3 wires, not 5 (and for me it was a pain soldering the wires to the frame so this was a big win).
 
 1. UNPLUG YOUR USB adaptor!
 2. Connect the ground from your USB adapter.  I used a grasping logic analyzer probe for this to avoid soldering.
