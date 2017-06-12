@@ -150,6 +150,12 @@ Under Linux, simply use a NetCat instance to watch this log (it is NOT in syslog
 
 If no IP is specified (IP=0.0.0.0), the serial port will be used (i.e. for desktop debugging)
 
+## Time Zones and TimeLib
+
+The timezones are stored as a custom, post-processed output from the IANA Time Zone Database (http://www.iana.org/time-zones). The included PERL script, make-tz-h.pl, takes the source files in IANA's text format and generates a header file containing several data structures parsed by the file tz.cpp to adjust the UTC time that is stored using TimeLib to the local times.  The file tz.cpp can be built by itself under Linux with "gcc -o tz tz.cpp" to do testing.
+
+The data structures are stored in FLASH in a fast "compressed" format where only the differences between strings are stored to save precious space.
+
 
 ## References and many thanks
 
