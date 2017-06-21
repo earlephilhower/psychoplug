@@ -27,12 +27,25 @@
 #include "relay.h"
 #include "timezone.h"
 
-const char *actionString[] = { "None", "On", "Off", "Toggle", "Pulse Off", "Pulse On" };
+
+char *GetActionString(int idx, char *str, int len) {
+  switch (idx) {
+    case 0 : strncpy_P(str, PSTR("None"), len); break;
+    case 1 : strncpy_P(str, PSTR("On"), len); break;
+    case 2 : strncpy_P(str, PSTR("Off"), len); break;
+    case 3 : strncpy_P(str, PSTR("Toggle"), len); break;
+    case 4 : strncpy_P(str, PSTR("Pulse Off"), len); break;
+    case 5 : strncpy_P(str, PSTR("Pulse On"), len); break;
+    default: strncpy_P(str, PSTR("Invalid"), len); break;
+  }
+  return str;
+}
 
 void PerformAction(int action)
 {
   if (action != ACTION_NONE) {
-    MQTTPublish("event", actionString[action]);
+    char str[16];
+    MQTTPublish("event", GetActionString(action, str, sizeof(str)));
   }
   
   switch (action) {

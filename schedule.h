@@ -40,7 +40,7 @@ typedef struct {
 #define ACTION_PULSEOFF (4)
 #define ACTION_PULSEON  (5)
 #define ACTION_MAX      (5)
-extern const char *actionString[];
+extern char *GetActionString(int idx, char *str, int len);
 extern void PerformAction(int action);
 
 

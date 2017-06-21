@@ -31,7 +31,7 @@ static WiFiUDP ntpUDP;
 static time_t GetNTPTime();
 static void SendNTPPacket(IPAddress &address, byte *packetBuffer);
 
-static int syncInterval = 600;
+static short syncInterval = 600;
 
 void StartNTP()
 {

@@ -314,7 +314,8 @@ void SendStatusHTML(WiFiClient *client)
       sprintf_P(buff+len, PSTR("<td>%d:%02d</td>"), settings.event[i].hour, settings.event[i].minute);
       len += strlen(buff+len);
     }
-    sprintf_P(buff+len, PSTR("<td>%s</td>"), actionString[settings.event[i].action]);
+    char str[16];
+    sprintf_P(buff+len, PSTR("<td>%s</td>"), GetActionString(settings.event[i].action, str, sizeof(str)));
     len += strlen(buff+len);
     sprintf_P(buff+len, PSTR("<td><a href=\"edit.html?id=%d\">Edit</a></td></tr>\r\n"), i);
     client->print(buff);
@@ -374,7 +375,8 @@ void SendEditHTML(WiFiClient *client, int id)
   if (settings.use12hr)
     WebPrintf(client, "<select name=\"ampm\"><option %s>AM</option><option %s>PM</option></select></td>", settings.event[id].hour<12?"selected":"", settings.event[id].hour>=12?"selected":"");
   WebPrintf(client, "<td>\n<select name=\"action\">");
-  for (int j=0; j<=ACTION_MAX; j++) WebPrintf(client, "<option %s>%s</option>", settings.event[id].action==j?"selected":"", actionString[j]);
+  char str[16];
+  for (int j=0; j<=ACTION_MAX; j++) WebPrintf(client, "<option %s>%s</option>", settings.event[id].action==j?"selected":"", GetActionString(j, str, sizeof(str)));
   WebPrintf(client, "</select></td></table><br>\n");
   WebPrintf(client, "<input type=\"submit\" value=\"Submit\">\n");
   WebPrintf(client, "</form></body></html>\n");
@@ -568,8 +570,9 @@ void HandleUpdateSubmit(WiFiClient *client, char *params)
        ampm = 0;
     }
     if (!strcmp_P(namePtr, PSTR("action"))) {
+      char str[16];
       for (int i=0; i<=ACTION_MAX; i++)
-        if (!strcmp(valPtr, actionString[i])) action = i;
+        if (!strcmp(valPtr, GetActionString(i, str, sizeof(str)))) action = i;
     }
     if (namePtr[0]>='a' && namePtr[0]<='g' && namePtr[1]==0) {
       if (!strcmp_P(valPtr, PSTR("on"))) mask |= 1<<(namePtr[0]-'a');

@@ -78,11 +78,13 @@ void StartMQTT()
 
 void ManageMQTT()
 {
+  if (!settings.mqttEnable) return;
+
   // Only have MQTT loop if we're connected and configured
-  if (settings.mqttEnable && mqttClient.connected()) {
+  if (mqttClient.connected()) {
     mqttClient.loop();
     delay(10);
-  } else if (settings.mqttEnable && !mqttClient.connected()){
+  } else {
     LogPrintf("MQTT disconnected, reconnecting\n");
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
     if (mqttClient.connected() ) {
@@ -99,6 +101,7 @@ void StopMQTT()
   if (settings.mqttEnable) {
     wifiMQTT->flush();
     wifiMQTT->stop();
+    mqttClient.disconnect();
   }
 }
 

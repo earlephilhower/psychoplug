@@ -64,7 +64,7 @@ bool LoadSettings(bool reset)
     settings.version = SETTINGSVERSION;
     settings.ssid[0] = 0;
     settings.psk[0] = 0;
-    strcpy(settings.hostname, "psychoplug");
+    strcpy_P(settings.hostname, PSTR("psychoplug"));
     settings.useDHCP = true;
     memset(settings.ip, 0, 4);
     memset(settings.dns, 0, 4);

@@ -21,7 +21,6 @@
 #include <Arduino.h>
 #include <Hash.h>  //sha1 exported here
 #include "password.h"
-//#include "settings.h"
 
 
 // Set the settings.uiPassEnc to the raw password and callthis to make a new salt and run encryption against it
