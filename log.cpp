@@ -41,10 +41,11 @@ void StopLog()
 
 void Log(const char *str)
 {
-  static char mac[12] = {0};
+  static char mac[8] = {0};
   if (mac[0]==0) {
+    byte hwMAC[12];
     WiFi.macAddress((byte *)mac);
-    sprintf_P(mac, PSTR("%02x%02x%02x: "), mac[3], mac[4], mac[5]);
+    sprintf_P(mac, PSTR("%02x%02x%02x: "), hwMAC[3], hwMAC[4], hwMAC[5]);
   }
 
   if (!isSetup || !settings.logsvr[0]) {
@@ -53,7 +54,7 @@ void Log(const char *str)
     Serial.flush();
   } else {
     udpLog.beginPacket(settings.logsvr, 9911);
-    udpLog.write(mac, 5);
+    udpLog.write(mac, 8);
     udpLog.write(str, strlen(str));
     udpLog.endPacket();  
   }
