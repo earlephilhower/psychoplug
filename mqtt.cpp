@@ -95,7 +95,8 @@ void ManageMQTT()
 
 void StopMQTT()
 {
-  
+  if (settings.mqttSSL) wifiMQTTSSL.stop();
+  else wifiMQTT.stop();
 }
 
 void MQTTPublish(const char *key, const char *value)
