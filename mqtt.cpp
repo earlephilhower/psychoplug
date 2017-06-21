@@ -29,8 +29,7 @@
 #include "relay.h"
 
 // MQTT interface
-static WiFiClient wifiMQTT;
-static WiFiClientSecure wifiMQTTSSL;
+static WiFiClient *wifiMQTT = NULL;
 static MQTTClient mqttClient;
 
 // Callback for the MQTT library
@@ -64,7 +63,9 @@ void StartMQTT()
   LogPrintf("Free heap = %d\n", ESP.getFreeHeap());
   LogPrintf("Connecting MQTT...\n");
   if (settings.mqttEnable) {
-    mqttClient.begin(settings.mqttHost, settings.mqttPort, settings.mqttSSL ? wifiMQTTSSL : wifiMQTT);
+    if (settings.mqttSSL) wifiMQTT = new WiFiClientSecure();
+    else wifiMQTT = new WiFiClient();
+    mqttClient.begin(settings.mqttHost, settings.mqttPort, *wifiMQTT);
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
     if (mqttClient.connected() ) {
       char topic[64];
@@ -95,8 +96,10 @@ void ManageMQTT()
 
 void StopMQTT()
 {
-  if (settings.mqttSSL) wifiMQTTSSL.stop();
-  else wifiMQTT.stop();
+  if (settings.mqttEnable) {
+    wifiMQTT->flush();
+    wifiMQTT->stop();
+  }
 }
 
 void MQTTPublish(const char *key, const char *value)
