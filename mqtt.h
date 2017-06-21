@@ -23,7 +23,6 @@
 
 void StartMQTT();
 void ManageMQTT();
-void PauseMQTT(bool pause);
 void StopMQTT();
 
 void MQTTPublish(const char *key, const char *value);
