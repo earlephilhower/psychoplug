@@ -27,34 +27,37 @@
 #include "settings.h"
 
 static WiFiUDP udpLog;
+static byte logSvr[4] = {0,0,0,0};
 
-
-void StartLog()
+void StartLog(SettingsWiFi *wifi)
 {
-  udpLog.begin(8976);
+  memcpy(&logSvr, &wifi->logsvr, sizeof(logSvr));
+  if (logSvr[0]) {
+    udpLog.begin(8976);
+  }
 }
 
 void StopLog()
 {
-  udpLog.stop();
+  if (logSvr[0]) {
+    udpLog.stop();
+  }
 }
 
 void Log(const char *str)
 {
-  static char mac[8] = {0};
-  if (mac[0]==0) {
-    byte hwMAC[12];
-    WiFi.macAddress((byte *)mac);
-    sprintf_P(mac, PSTR("%02x%02x%02x: "), hwMAC[3], hwMAC[4], hwMAC[5]);
-  }
+  char logMAC[8];
+  byte hwMAC[12];
+  WiFi.macAddress(hwMAC);
+  sprintf_P(logMAC, PSTR("%02x%02x%02x: "), hwMAC[3], hwMAC[4], hwMAC[5]);
 
-  if (!isSetup || !settings.logsvr[0]) {
-    Serial.print(mac);
+  if (!isSetup || !logSvr[0]) {
+    Serial.print(logMAC);
     Serial.print(str);
     Serial.flush();
   } else {
-    udpLog.beginPacket(settings.logsvr, 9911);
-    udpLog.write(mac, 8);
+    udpLog.beginPacket(logSvr, 9911);
+    udpLog.write(logMAC, 8);
     udpLog.write(str, strlen(str));
     udpLog.endPacket();  
   }

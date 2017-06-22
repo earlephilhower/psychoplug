@@ -57,7 +57,7 @@ int ParseInt(char *src, int *dest);
 void Read4Int(char *str, byte *p);
 #define ParamText(name, dest)     { if (!strcmp(namePtr, (name))) strlcpy((dest), valPtr, sizeof(dest)); }
 #define ParamCheckbox(name, dest) { if (!strcmp(namePtr, (name))) (dest) = !strcmp("on", valPtr); }
-#define ParamInt(name, dest)      { if (!strcmp(namePtr, (name))) ParseInt(valPtr, &dest); }
+#define ParamInt(name, dest)      { { int i; if (!strcmp(namePtr, (name))) ParseInt(valPtr, &i); dest = i; } }
 #define Param4Int(name, dest)     { if (!strcmp(namePtr, (name))) Read4Int(valPtr, (dest)); }
 
 

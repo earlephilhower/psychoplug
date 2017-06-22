@@ -44,8 +44,11 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
   payload.toCharArray(p, sizeof(p));
   LogPrintf("MQTT: '%s'='%s'\n", t, p); 
 
+  SettingsMQTT mqtt;
+  LoadSettingsMQTT(&mqtt);
+
   char topicStr[64];
-  snprintf_P(topicStr, sizeof(topicStr), PSTR("%s/remotepower"), settings.mqttTopic);
+  snprintf_P(topicStr, sizeof(topicStr), PSTR("%s/remotepower"), mqtt.topic);
   if (!strcmp(topicStr, t)) {
     if (!strcasecmp_P(p, PSTR("on")) || !strcmp_P(p, PSTR("1")))
       SetRelay(true);
@@ -57,19 +60,19 @@ void messageReceived(String topic, String payload, char *bytes, unsigned int len
 }
 
 
-void StartMQTT()
+void StartMQTT(SettingsMQTT *mqtt)
 {
   LogPrintf("Starting MQTT\n");
   LogPrintf("Free heap = %d\n", ESP.getFreeHeap());
   LogPrintf("Connecting MQTT...\n");
-  if (settings.mqttEnable) {
-    if (settings.mqttSSL) wifiMQTT = new WiFiClientSecure();
+  if (mqtt->enable) {
+    if (mqtt->SSL) wifiMQTT = new WiFiClientSecure();
     else wifiMQTT = new WiFiClient();
-    mqttClient.begin(settings.mqttHost, settings.mqttPort, *wifiMQTT);
-    mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
+    mqttClient.begin(mqtt->host, mqtt->port, *wifiMQTT);
+    mqttClient.connect(mqtt->clientID, mqtt->user, mqtt->pass);
     if (mqttClient.connected() ) {
       char topic[64];
-      snprintf_P(topic, sizeof(topic), PSTR("%s/remotepower"), settings.mqttTopic);
+      snprintf_P(topic, sizeof(topic), PSTR("%s/remotepower"), mqtt->topic);
       mqttClient.subscribe(topic);
     }
   }
@@ -78,7 +81,7 @@ void StartMQTT()
 
 void ManageMQTT()
 {
-  if (!settings.mqttEnable) return;
+  if (!wifiMQTT) return;
 
   // Only have MQTT loop if we're connected and configured
   if (mqttClient.connected()) {
@@ -86,10 +89,12 @@ void ManageMQTT()
     delay(10);
   } else {
     LogPrintf("MQTT disconnected, reconnecting\n");
-    mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
+    SettingsMQTT mqtt;
+    LoadSettingsMQTT(&mqtt);
+    mqttClient.connect(mqtt.clientID, mqtt.user, mqtt.pass);
     if (mqttClient.connected() ) {
       char topic[64];
-      snprintf_P(topic, sizeof(topic), PSTR("%s/remotepower"), settings.mqttTopic);
+      snprintf_P(topic, sizeof(topic), PSTR("%s/remotepower"), mqtt.topic);
       mqttClient.subscribe(topic);
     }
     delay(10);
@@ -98,8 +103,7 @@ void ManageMQTT()
 
 void StopMQTT()
 {
-  if (settings.mqttEnable) {
-    wifiMQTT->flush();
+  if (wifiMQTT) {
     wifiMQTT->stop();
     mqttClient.disconnect();
   }
@@ -107,9 +111,12 @@ void StopMQTT()
 
 void MQTTPublish(const char *key, const char *value)
 {
-  if (isSetup && settings.mqttEnable && mqttClient.connected()) {
+  if (isSetup && wifiMQTT && mqttClient.connected()) {
+    SettingsMQTT mqtt;
+    LoadSettingsMQTT(&mqtt);
+
     char topic[64];
-    snprintf_P(topic, sizeof(topic), PSTR("%s/%s"), settings.mqttTopic, key);
+    snprintf_P(topic, sizeof(topic), PSTR("%s/%s"), mqtt.topic, key);
     mqttClient.publish(topic, value);
   }
 }

@@ -21,8 +21,10 @@
 #ifndef _log_h
 #define _log_h
 
+#include "settings.h"
+
 // Start and stop logging infrastructure
-void StartLog();
+void StartLog(SettingsWiFi *wifi);
 void StopLog();
 
 // Write string to the log (serial or UDP)

@@ -21,8 +21,10 @@
 #ifndef _ntp_h
 #define _ntp_h
 
+#include "settings.h"
+
 // Handle NTP set up from settings variable
-void StartNTP();
+void StartNTP(SettingsTime *time);
 
 // Stop any NTP operations
 void StopNTP();

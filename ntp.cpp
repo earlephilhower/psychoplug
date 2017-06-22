@@ -33,10 +33,10 @@ static void SendNTPPacket(IPAddress &address, byte *packetBuffer);
 
 static short syncInterval = 600;
 
-void StartNTP()
+void StartNTP(SettingsTime *time)
 {
   // Enable NTP timekeeping
-  ntpUDP.begin(8675); // 309
+  ntpUDP.begin(8675);
   setSyncProvider(GetNTPTime);
   setSyncInterval(syncInterval);
 }
@@ -56,9 +56,12 @@ static time_t GetNTPTime()
   IPAddress ntpServerIP; // NTP server's ip address
   byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
 
+  SettingsTime time;
+  LoadSettingsTime(&time);
+
   while (ntpUDP.parsePacket() > 0) ; // discard any previously received packets
   // get a random server from the pool
-  WiFi.hostByName(settings.ntp, ntpServerIP);
+  WiFi.hostByName(time.ntp, ntpServerIP);
   SendNTPPacket(ntpServerIP, packetBuffer);
   int timeout = 1500; // Avoid issue of millis() rollover
   while (timeout--) {

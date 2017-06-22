@@ -21,7 +21,9 @@
 #ifndef _mqtt_h
 #define _mqtt_h
 
-void StartMQTT();
+#include "settings.h"
+
+void StartMQTT(SettingsMQTT *mqtt);
 void ManageMQTT();
 void StopMQTT();
 

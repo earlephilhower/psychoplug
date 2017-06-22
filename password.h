@@ -21,8 +21,8 @@
 #ifndef _password_h
 #define _password_h
 
-#define PASSENCLEN (20)
-#define SALTLEN (32)
+#define PASSENCLEN (16)
+#define SALTLEN (16)
 
 // Set the settings.uiPassEnc to the raw password and callthis to make a new salt and run encryption against it
 // Output overwrites the uiPassEnc variable

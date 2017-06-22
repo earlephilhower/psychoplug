@@ -77,6 +77,9 @@ void ManageSchedule()
     lastDOW = weekday(t) - 1; // We 0-index, weekday() 1-indexes
   }
 
+  SettingsEvents events;
+  LoadSettingsEvents(&events);
+
   // If this is a new h/m/dow then go through all events and see if we need to do an action.
   // Only execute after we scan everything, so only last action done once even if there are
   // multiple entries for the same time or multiple times scanned.
@@ -94,8 +97,8 @@ void ManageSchedule()
       if (lastHour==24) { delay(1); /* allow ctx switch */ lastDOW++; lastHour = 0; }
       if (lastDOW==7) lastDOW = 0; // Sat->Sun
       for (int i=0; i<MAXEVENTS; i++) {
-        if ((settings.event[i].dayMask & (1<<lastDOW)) && (settings.event[i].hour == lastHour) && (settings.event[i].minute == lastMin) && (settings.event[i].action != ACTION_NONE)) {
-          action = settings.event[i].action;
+        if ((events.event[i].dayMask & (1<<lastDOW)) && (events.event[i].hour == lastHour) && (events.event[i].minute == lastMin) && (events.event[i].action != ACTION_NONE)) {
+          action = events.event[i].action;
         }
       }
     }
