@@ -712,7 +712,7 @@ void loop()
       LogPrintf("-HTTPS setup request\n");
     }
   } else {
-    ManageMQTT();
+    if (!otaServer) ManageMQTT();
     ManageSchedule();
     ManagePowerMonitor();
 
@@ -751,6 +751,7 @@ void loop()
         } else if (!strcmp_P(url, PSTR("config.html")) && *params) {
           HandleConfigSubmit(&client, params);
         } else if (!strcmp_P(url, PSTR("enableupdate.html"))) {
+          StopMQTT();
           otaUpdateServer = new ESP8266HTTPUpdateServer;
           otaServer = new ESP8266WebServer(8080);
           otaUpdateServer->setup(otaServer);
