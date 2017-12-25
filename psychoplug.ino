@@ -164,8 +164,10 @@ void StartSTA()
   if (!settings.useDHCP) {
     WiFi.config(settings.ip, settings.gateway, settings.netmask, settings.dns);
   } else {
-    byte zero[] = {0,0,0,0};
-    WiFi.config(zero, zero, zero, zero);
+    //byte zero[] = {0,0,0,0};
+    //WiFi.config(zero, zero, zero, zero);
+    // Above lines cause DHCP failure on 2.4-rc2.
+    // TODO -ensure that w/o anything it will request a dynamic address
   }
   if (settings.psk[0]) WiFi.begin(settings.ssid, settings.psk);
   else WiFi.begin(settings.ssid);
@@ -391,11 +393,6 @@ void SendSuccessHTML(WiFiClient *client)
 }
 
 
-extern "C" {
-  sint8 espconn_tcp_set_max_con(uint8 num);
-  uint8 espconn_tcp_get_max_con(void);
-}
-
 void setup()
 {
   Serial.begin(115200);
@@ -404,8 +401,6 @@ void setup()
   LogPrintf("Starting up...\n");
   delay(10);
 
-  espconn_tcp_set_max_con(15); // Allow lots of connections, which happens during wifi discovery by phones/etc.
-  LogPrintf("Maximum TCP connections: %d\n", espconn_tcp_get_max_con());
   LogPrintf("Settings size=%d\n", sizeof(settings));
   
   StartButton();
