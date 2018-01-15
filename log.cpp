@@ -44,7 +44,7 @@ void Log(const char *str)
   static char mac[8] = {0};
   if (mac[0]==0) {
     byte hwMAC[12];
-    WiFi.macAddress((byte *)mac);
+    WiFi.macAddress((byte *)hwMAC);
     sprintf_P(mac, PSTR("%02x%02x%02x: "), hwMAC[3], hwMAC[4], hwMAC[5]);
   }
 

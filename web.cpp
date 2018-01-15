@@ -26,8 +26,7 @@
 #include "password.h"
 #include "timezone.h"
 
-// Web request line (URL, PARAMs parsed in-line)
-static char reqBuff[384];
+
 
 
 void WebPrintError(WiFiClient *client, int code)
@@ -163,6 +162,7 @@ bool WebReadRequest(WiFiClient *client, char **urlStr, char **paramStr, bool aut
   static char NUL = 0; // Get around writable strings...
   char hdrBuff[128];
   char authBuff[128];
+  char reqBuff[384];
 
   *urlStr = NULL;
   *paramStr = NULL;
