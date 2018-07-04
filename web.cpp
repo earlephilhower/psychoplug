@@ -386,7 +386,6 @@ void WebTimezonePicker(WiFiClient *client, const char *timezone)
   WebPrintf(client, "}\n");
   WebPrintf(client, "setTimeout(function(){selectItemByValue(document.getElementById('tz'), '%s');}, 500);\n", timezone );
   WebPrintf(client, "</script>\n");
-
 }
 
 

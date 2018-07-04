@@ -33,13 +33,10 @@ static WiFiClient *wifiMQTT = NULL;
 static MQTTClient mqttClient;
 
 // Callback for the MQTT library
-void messageReceived(String topic, String payload, char *bytes, unsigned int length)
+void messageReceived(String& topic, String& payload)
 {
   char t[64], p[32];
 
-  (void)bytes;
-  (void)length;
-  
   topic.toCharArray(t, sizeof(t));
   payload.toCharArray(p, sizeof(p));
   LogPrintf("MQTT: '%s'='%s'\n", t, p); 
@@ -66,6 +63,7 @@ void StartMQTT()
     if (settings.mqttSSL) wifiMQTT = new WiFiClientSecure();
     else wifiMQTT = new WiFiClient();
     mqttClient.begin(settings.mqttHost, settings.mqttPort, *wifiMQTT);
+    mqttClient.onMessage(messageReceived);
     mqttClient.connect(settings.mqttClientID, settings.mqttUser, settings.mqttPass);
     if (mqttClient.connected() ) {
       char topic[64];
