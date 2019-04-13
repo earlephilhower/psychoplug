@@ -332,7 +332,7 @@ void WebTimezonePicker(WiFiClient *client, const char *timezone)
   WebPrintf(client, "Timezone: <select name=\"tz\" id=\"tz\">\n");
   char str[64];
   char temp[128];
-  char *buff = (char *)alloca(1400); // We'll combine a bunch of TZs into a single packet this way, way faster to send
+  char *buff = (char *)malloc(1400); // We'll combine a bunch of TZs into a single packet this way, way faster to send
   if (buff) {
     buff[0] = 0;
     int len = 0;
@@ -349,6 +349,7 @@ void WebTimezonePicker(WiFiClient *client, const char *timezone)
     }
     if (len) {
       client->print(buff);
+      delay(0);
     }
   } else { // Can't allocate buff, fall back to standard way
     while ( GetNextTZ(reset, str, sizeof(str)) ) {
@@ -357,6 +358,7 @@ void WebTimezonePicker(WiFiClient *client, const char *timezone)
     }
   }
   WebPrintf(client, "</select><br>\n");
+  free(buff);
 
   // Javascript to sort alphabetically...
   WebPrintf(client, "<script type=\"text/javascript\">\n");
@@ -419,7 +421,3 @@ void Read4Int(char *str, byte *p)
   str += ParseInt(str, &i); p[2] = i; if (*str) str++;
   str += ParseInt(str, &i); p[3] = i;
 }
-
-
-
-

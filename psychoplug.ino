@@ -144,7 +144,7 @@ void StartSetupAP()
   WiFi.softAPConfig(setupIP, setupIP, setupMask);
   WiFi.softAP(ssid);
 
-//  StartDNS(&setupIP);
+  StartDNS(&setupIP);
   
   LogPrintf("Waiting for connection\n");
   https.begin();
@@ -238,13 +238,13 @@ void SendSetupHTML(WiFiClient *client)
   WebFormText(client, PSTR("Gateway"), "gw", FormatIP(settings.gateway, buff, sizeof(buff)), !settings.useDHCP);
   WebFormText(client, PSTR("DNS"), "dns", FormatIP(settings.dns, buff, sizeof(buff)), !settings.useDHCP);
   WebFormText(client, PSTR("UDP Log Server"), "logsvr", FormatIP(settings.logsvr, buff, sizeof(buff)), true);
-  
+  delay(0);
   WebPrintf(client, "<br><h1>Timekeeping</h1>\n");
   WebFormText(client, PSTR("NTP Server"), "ntp", settings.ntp, true);
   WebTimezonePicker(client, settings.timezone);
   WebFormCheckbox(client, PSTR("12hr Time Format"), "use12hr", settings.use12hr, true);
   WebFormCheckbox(client, PSTR("DD/MM/YY Date Format"), "usedmy", settings.usedmy, true);
-
+  delay(0);
   WebPrintf(client, "<br><h1>Power</h1>\n");
   //WebFormText(client, PSTR("Mains Voltage"), "voltage", settings.voltage, true);
   WebFormCheckbox(client, PSTR("Start powered up after power loss"), "pf", settings.onAfterPFail, true);
@@ -655,7 +655,7 @@ void loop()
 
   // Pump DNS queue
   if (!isSetup) {
-//    ManageDNS();
+    ManageDNS();
   }
   
   char *url;
@@ -675,10 +675,10 @@ void loop()
       } else {
         if (!strcmp_P(url, PSTR("favicon.ico"))) {
           WebError(&redir, 404, NULL);
-//        } else if (!strcmp_P(url, PSTR("generate_204"))) {
-//          LogPrintf("Sending 301 redirector to https://<>/configure.html\n");
-//          snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/configure.html"), setupIP[0], setupIP[1], setupIP[2], setupIP[3]);
-//          WebError(&redir, 301, newLoc, false);
+        } else if (!strcmp_P(url, PSTR("generate_204"))) {
+          LogPrintf("Sending 301 redirector to https://<>/configure.html\n");
+          snprintf_P(newLoc, sizeof(newLoc), PSTR("Location: https://%d.%d.%d.%d/configure.html"), setupIP[0], setupIP[1], setupIP[2], setupIP[3]);
+          WebError(&redir, 301, newLoc, false);
         } else {
           LogPrintf("Sending redirector web page listing config https link\n");
           SendGoToConfigureHTTPS(&redir);
@@ -694,7 +694,8 @@ void loop()
     if (client) {
       LogPrintf("+HTTPS setup request\n");
       if (WebReadRequest(&client, &url, &params, false)) {
-        if (IsIndexHTML(url)) {
+        Serial.printf("url: '%s'\n", url);
+        if (IsIndexHTML(url) || !strcmp_P(url, PSTR("configure.html"))) {
           SendSetupHTML(&client);
         } else if (!strcmp_P(url, PSTR("config.html")) && *params) {
           HandleConfigSubmit(&client, params);
@@ -762,4 +763,3 @@ void loop()
     }
   }
 }
-

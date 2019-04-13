@@ -141,8 +141,10 @@ void ManageDNS()
           if (*p) nameBuff[j++] = '.';
         }
         nameBuff[j++] = 0;
-        LogPrintf("DNS: Single query for '%s', replying with my IP\n", nameBuff);
-        ReplyWithIP(hdr, pkt, size);
+        if (!strcmp_P(nameBuff, PSTR("connectivitycheck.gstatic.com"))) {
+          LogPrintf("DNS: Single query for '%s', replying with my IP\n", nameBuff);
+          ReplyWithIP(hdr, pkt, size);
+        }
       } else {
         LogPrintf("DNS: not parsed\n");
       }
@@ -150,4 +152,3 @@ void ManageDNS()
     
   }
 }
-

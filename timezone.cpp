@@ -25,7 +25,7 @@
 #include "log.h"
 
 #include "tz.h"
-
+/*
 typedef struct tm {
   uint8_t tm_sec; 
   uint8_t tm_min; 
@@ -36,7 +36,7 @@ typedef struct tm {
   uint16_t tm_year;
   uint8_t tm_isdst;
 } tm;
-
+*/
 
 time_t mktime(struct tm *tm)
 {
@@ -429,4 +429,3 @@ int main(int argc, const char *argv[])
  return 0;
 }
 #endif
-
